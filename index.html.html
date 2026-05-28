@@ -1,0 +1,3847 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limkorm Group — Premium Sales Analytics Dashboard</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+ <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #F0F4F8;
+            color: #1A2C3E;
+        }
+
+        /* Корпоративные цвета */
+        :root {
+            --primary-dark: #004D7A;
+            --primary: #006098;
+            --primary-light: #0080B8;
+            --secondary: #00C0DE;
+            --secondary-dark: #00A0B8;
+            --accent: #00C0DE;
+            --gray-50: #F8F9FC;
+            --gray-100: #F0F2F6;
+            --gray-200: #E4E8EE;
+            --gray-600: #5A6F84;
+            --gray-700: #3D4F62;
+            --gray-800: #2C3E50;
+            --shadow-sm: 0 8px 20px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.02);
+            --shadow-md: 0 12px 28px rgba(0,0,0,0.06);
+            --shadow-lg: 0 20px 40px rgba(0,0,0,0.08);
+            --gradient-primary: linear-gradient(135deg, #006098 0%, #00C0DE 100%);
+            --gradient-dark: linear-gradient(135deg, #004D7A 0%, #006098 100%);
+        }
+
+        .dashboard-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 16px 20px;
+        }
+
+        /* Премиум шапка */
+        .premium-header {
+            background: var(--gradient-dark);
+            border-radius: 24px;
+            padding: 20px 28px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .premium-header::before {
+            content: '';
+            position: absolute;
+            top: -30%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(0,192,222,0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .premium-header::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            left: -5%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(0,96,152,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .logo-section h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: white;
+            letter-spacing: -0.5px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo-section .subhead {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.85rem;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .brand-badge {
+            background: rgba(0,192,222,0.25);
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #00C0DE;
+        }
+
+        .upload-module {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(12px);
+            border-radius: 56px;
+            padding: 6px 8px 6px 8px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border: 1px solid rgba(255,255,255,0.2);
+            position: relative;
+            z-index: 1;
+        }
+
+        .file-status {
+            color: rgba(255,255,255,0.85);
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .upload-btn {
+            background: var(--secondary);
+            border: none;
+            padding: 12px 28px;
+            border-radius: 44px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        .upload-btn:hover {
+            background: var(--secondary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,192,222,0.35);
+        }
+
+        /* KPI Cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+/* Обновленные стили для KPI карточек - более компактные */
+.kpi-card {
+    background: white;
+    border-radius: 20px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+}
+
+.kpi-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--gradient-primary);
+}
+
+.kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.kpi-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    color: var(--gray-600);
+    margin-bottom: 6px;
+}
+
+.kpi-value {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--primary);
+    margin: 4px 0 8px;
+    line-height: 1.1;
+}
+
+.kpi-trend {
+    font-size: 0.75rem;
+    display: flex;
+    justify-content: center; /* ВМЕСТО space-between */
+    align-items: center;
+    gap: 24px; /* УВЕЛИЧИТЬ РАССТОЯНИЕ МЕЖДУ ДВУМЯ ПОКАЗАТЕЛЯМИ */
+    font-weight: 600;
+    padding-top: 6px;
+    border-top: 1px solid var(--gray-100);
+}
+
+.trend-item {
+    text-align: center;
+    flex: 1;
+}
+
+.trend-label {
+    font-size: 0.6rem;
+    color: #666;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.trend-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+        /* Insight Panel */
+        .insight-premium {
+            background: linear-gradient(112deg, #F0F8FA 0%, #FAFDFF 100%);
+            border-radius: 20px;
+            padding: 16px 24px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0,192,222,0.3);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .insight-title {
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .insight-text {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+
+        /* Chart Cards */
+        .chart-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 20px;
+            padding: 16px 16px 20px;
+            flex: 1 1 calc(50% - 24px);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-200);
+            transition: all 0.2s;
+        }
+
+        .chart-card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .chart-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--gray-100);
+        }
+
+        .chart-header h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .chart-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(0,96,152,0.1);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        canvas {
+            max-height: 320px;
+            width: 100%;
+        }
+
+        .full-width {
+            flex: 1 1 100%;
+        }
+
+        /* Кнопки переключения метрик */
+        .metric-btn {
+            background: #f0f2f6;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            color: var(--gray-700);
+        }
+
+        .metric-btn:hover {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .metric-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,96,152,0.3);
+        }
+
+        /* Premium Table */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 20px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .data-table th {
+            background: var(--gray-50);
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 700;
+            color: var(--primary-dark);
+            border-bottom: 2px solid var(--gray-200);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+        }
+
+        .data-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--gray-100);
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+
+        .product-badge {
+            background: linear-gradient(135deg, var(--gray-100), white);
+            padding: 5px 12px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--primary);
+            display: inline-block;
+            border: 1px solid var(--gray-200);
+        }
+
+        .loader {
+            text-align: center;
+            padding: 80px;
+            background: white;
+            border-radius: 40px;
+            color: var(--gray-600);
+            font-weight: 500;
+            box-shadow: var(--shadow-sm);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 32px;
+            padding: 16px;
+            font-size: 0.7rem;
+            color: var(--gray-600);
+            border-top: 1px solid var(--gray-200);
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-container { padding: 12px; }
+            .premium-header { flex-direction: column; align-items: flex-start; }
+            .chart-card { flex: 1 1 100%; }
+        }
+
+        /* Полноэкранный режим */
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 10000;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .fullscreen-overlay .chart-card {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            flex: none;
+        }
+
+        .fullscreen-overlay canvas {
+            max-height: calc(100vh - 120px);
+            height: auto;
+        }
+
+        .fullscreen-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            margin-left: auto;
+        }
+
+        .fullscreen-btn:hover {
+            background: rgba(0,0,0,0.05);
+            transform: scale(1.05);
+        }
+
+        .close-fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--primary);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            color: white;
+            font-weight: bold;
+        }
+
+        .close-fullscreen-btn:hover {
+            background: var(--primary-light);
+            transform: scale(1.1);
+        }
+
+        /* Стили для новой интерактивной таблицы */
+        .metrics-selector {
+            background: white;
+            border-radius: 20px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .metrics-title {
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metrics-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .metric-option {
+            background: #f0f2f6;
+            border: 2px solid transparent;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            color: var(--gray-700);
+        }
+
+        .metric-option:hover {
+            background: var(--secondary);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .metric-option.selected {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,96,152,0.3);
+        }
+
+        .export-btn {
+            background: var(--gradient-primary);
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+            margin-left: auto;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,96,152,0.3);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 16px;
+            margin-top: 16px;
+        }
+
+        .dynamic-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            background: white;
+        }
+
+        .dynamic-table th {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 12px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .dynamic-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--gray-100);
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+
+        .dynamic-table tr:hover {
+            background: var(--gray-50);
+        }
+
+        .table-status {
+            text-align: center;
+            padding: 40px;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        /* Стили для сортируемых заголовков */
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+            position: relative;
+            padding-right: 25px !important;
+        }
+
+        .sortable-header:hover {
+            background: linear-gradient(135deg, #0080B8 0%, #006098 100%);
+        }
+
+        .sortable-header::after {
+            content: '⇅';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            opacity: 0.6;
+        }
+
+        .sortable-header.asc::after {
+            content: '↑';
+            opacity: 1;
+        }
+
+        .sortable-header.desc::after {
+            content: '↓';
+            opacity: 1;
+        }
+
+        /* Ограничение высоты таблицы с прокруткой */
+        .table-container-scroll {
+            max-height: 500px;
+            overflow-y: auto;
+            overflow-x: auto;
+            border-radius: 16px;
+            margin-top: 16px;
+            position: relative;
+        }
+
+        .table-container-scroll table {
+            width: 100%;
+        }
+
+        .table-container-scroll thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .table-container-scroll th {
+            position: sticky;
+            top: 0;
+            background: var(--gradient-primary);
+            z-index: 11;
+        }
+
+        /* Упрощенные настройки показателей без подгрупп */
+        .simple-metrics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .simple-metrics .metric-option {
+            font-size: 0.8rem;
+            padding: 6px 14px;
+        }
+
+        /* Стили для двойного переключателя */
+        .global-controls {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+            align-items: center;
+        }
+
+        .mode-selector, .period-selector {
+            background: var(--primary);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .mode-selector:hover, .period-selector:hover {
+            background: var(--primary-light);
+            transform: translateY(-1px);
+        }
+
+        .period-selector.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .reset-btn {
+            background: var(--gray-600);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+
+        .reset-btn:hover {
+            background: var(--gray-700);
+        }
+
+        /* Индикаторы на заголовках */
+        .column-indicator {
+            margin-left: 6px;
+            font-size: 0.7rem;
+            display: inline-block;
+        }
+
+        /* Контекстное меню */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+            z-index: 10000;
+            min-width: 180px;
+            overflow: hidden;
+        }
+
+        .context-menu-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .context-menu-item:hover {
+            background: var(--gray-100);
+        }
+
+        .context-menu-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .context-menu-divider {
+            height: 1px;
+            background: var(--gray-200);
+            margin: 4px 0;
+        }
+
+        /* Стили для блока фильтров */
+        .filters-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .filters-title {
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 12px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filters-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 120px;
+        }
+
+        .filter-group label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+            align-items: flex-end;
+        }
+
+        .apply-filters-btn, .reset-filters-btn {
+            background: var(--primary);
+            border: none;
+            padding: 8px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .apply-filters-btn:hover {
+            background: var(--primary-light);
+            transform: translateY(-1px);
+        }
+
+        .reset-filters-btn {
+            background: var(--gray-600);
+        }
+
+        .reset-filters-btn:hover {
+            background: var(--gray-700);
+        }
+
+        /* Стили для мультиселектов */
+        .multiselect {
+            position: relative;
+            min-width: 180px;
+        }
+
+        .multiselect-btn {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .multiselect-btn:hover {
+            border-color: var(--secondary);
+        }
+
+        .multiselect-btn.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(0,96,152,0.2);
+        }
+
+        .multiselect-value {
+            color: var(--gray-700);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 140px;
+        }
+
+        .multiselect-arrow {
+            font-size: 0.7rem;
+            color: var(--gray-600);
+        }
+
+        .multiselect-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            z-index: 1000;
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .multiselect-dropdown.show {
+            display: block;
+        }
+
+        .multiselect-option {
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .multiselect-option:hover {
+            background: var(--gray-100);
+        }
+
+        .multiselect-option input {
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .multiselect-option label {
+            cursor: pointer;
+            flex: 1;
+            font-size: 0.8rem;
+            color: var(--gray-700);
+        }
+
+        .multiselect-search {
+            padding: 8px;
+            border-bottom: 1px solid var(--gray-200);
+            position: sticky;
+            top: 0;
+            background: white;
+        }
+
+        .multiselect-search input {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            outline: none;
+        }
+
+        .multiselect-search input:focus {
+            border-color: var(--primary);
+        }
+
+        .selected-count {
+            background: var(--primary);
+            color: white;
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            margin-left: 6px;
+        }
+/* Стили для кнопки сохранения */
+.fullscreen-btn[onclick*="saveChartAsJPEG"]:hover {
+    background: rgba(0,192,222,0.2);
+    transform: scale(1.05);
+}
+/* Стили для иерархической таблицы остатков */
+.dt-row:hover, .type-parent-row:hover {
+    background-color: #e8f0fe !important;
+    transition: background 0.2s ease;
+}
+
+.dt-row td:first-child, .type-parent-row td:first-child, .brand-row td:first-child {
+    font-weight: 500;
+}
+
+.dt-expand, .type-expand {
+    font-size: 12px;
+    margin-right: 8px;
+    color: var(--primary);
+}
+
+.tooltip {
+    cursor: help;
+    border-bottom: 1px dotted #999;
+    display: inline-block;
+    font-size: 14px;
+}
+
+.dt-row td:first-child, .type-parent-row td:first-child {
+    font-weight: 600;
+}
+    </style>
+</head>
+<body>
+<div class="dashboard-container">
+   <div class="premium-header">
+    <div class="logo-section">
+      <h1>🐾 LIMKORM_GROUP | Индикаторы продаж</h1>
+    </div>
+<div class="upload-module">
+    <input type="file" id="excelInput" accept=".xlsx, .xls, .csv" style="display:none" />
+    <button class="upload-btn" onclick="document.getElementById('excelInput').click()">
+        Загрузить Excel
+    </button>
+</div>
+</div>
+
+    <div id="dashboardContent">
+        <div class="loader">
+            ⚡ Загрузите файл «Данные проба.xlsx» для построения премиум-аналитики
+        </div>
+    </div>
+    <footer>© Limkorm Group — экосистема качественного питания для кошек и собак. Данные дистрибьюторской сети.</footer>
+</div>
+
+<script>
+// Регистрируем плагин для отображения подписей на графике
+if (
+    typeof Chart !== 'undefined' &&
+    typeof ChartDataLabels !== 'undefined'
+) {
+    Chart.register(ChartDataLabels);
+}
+
+let currentCharts = {};
+
+function destroyCharts() {
+    Object.values(currentCharts).forEach(chart => { if(chart) chart.destroy(); });
+    currentCharts = {};
+}
+
+let currentMetric = 'akb'; // 'akb', 'sales', 'sku'
+let unifiedChart = null;
+
+// Данные для всех метрик
+let unifiedData = {
+    akb: { data2025: [], data2026: [], yearOverYearPct: [], monthOverMonthPct: [], yearOverYearAbs: [], monthOverMonthAbs: [], unit: 'ТТ', yTitle: 'Количество уникальных ТТ (АКБ)' },
+    sales: { data2025: [], data2026: [], yearOverYearPct: [], monthOverMonthPct: [], yearOverYearAbs: [], monthOverMonthAbs: [], unit: 'кг/ТТ', yTitle: 'Средние продажи на ТТ (кг)' },
+    sku: { data2025: [], data2026: [], yearOverYearPct: [], monthOverMonthPct: [], yearOverYearAbs: [], monthOverMonthAbs: [], unit: 'SKU/ТТ', yTitle: 'Среднее количество SKU на ТТ' }
+};
+
+// ===== ПЕРЕМЕННЫЕ ДЛЯ ТАБЛИЦЫ И ФИЛЬТРОВ (ПЕРЕНЕСЕНЫ В НАЧАЛО) =====
+let selectedMetrics = new Set(['year', 'month', 'sales_kg', 'akb_tt']);
+let tableData = [];
+let currentSortColumn = null;
+let currentSortDirection = 'asc';
+let globalMode = 'actual';
+let globalPeriod = 'yoy';
+let columnCustomSettings = new Map();
+const numericMetrics = ['sales_kg', 'akb_tt', 'new_tt', 'lost_tt', 'avg_sales_per_tt', 'avg_sku'];
+
+// ПЕРЕМЕННЫЕ ДЛЯ ФИЛЬТРОВ (множественный выбор)
+let filterValues = {
+    year: new Set(),
+    month: new Set(),
+    dm: new Set(),
+    rm: new Set(),
+    dt: new Set(),
+    sv: new Set(),
+    tp: new Set(),
+    tm: new Set(),
+    type: new Set()
+};
+let originalSalesData = [];
+
+// ===== КОНЕЦ ПЕРЕНЕСЕННЫХ ПЕРЕМЕННЫХ =====
+
+function switchMetric(metric) {
+    currentMetric = metric;
+    
+    // Обновляем активную кнопку
+    document.querySelectorAll('.metric-btn').forEach(btn => btn.classList.remove('active'));
+    const btnId = metric === 'akb' ? 'btnAKB' : metric === 'sales' ? 'btnSales' : 'btnSku';
+    const activeBtn = document.getElementById(btnId);
+    if (activeBtn) activeBtn.classList.add('active');
+    
+    // ✅ Добавить проверку на существование unifiedChart
+    if (!unifiedChart) {
+        console.warn('unifiedChart not initialized yet');
+        return;
+    }
+    
+    // ✅ Добавить проверку на существование данных
+    if (!unifiedData[metric] || !unifiedData[metric].data2025) {
+        console.error(`Data for metric ${metric} not available`);
+        return;
+    }
+    
+    // Обновляем данные в графике
+    unifiedChart.data.datasets[0].data = unifiedData[metric].data2025;
+    unifiedChart.data.datasets[1].data = unifiedData[metric].data2026;
+    unifiedChart.data.datasets[2].data = unifiedData[metric].yearOverYearPct;
+    unifiedChart.data.datasets[3].data = unifiedData[metric].monthOverMonthPct;
+    unifiedChart.data.datasets[4].data = unifiedData[metric].yearOverYearAbs;
+    unifiedChart.data.datasets[5].data = unifiedData[metric].monthOverMonthAbs;
+    
+    // Обновляем подписи осей
+    unifiedChart.options.scales.y.title.text = unifiedData[metric].yTitle;
+    unifiedChart.options.scales.y2.title.text = `Отклонение (${unifiedData[metric].unit})`;
+    
+    unifiedChart.update();
+}
+// Полноэкранный режим для карточки
+function toggleFullscreen(cardElement) {
+    if (!cardElement) return;
+    
+    // Если уже есть оверлей — закрываем
+    const existingOverlay = document.querySelector('.fullscreen-overlay');
+    if (existingOverlay) {
+
+    const fullscreenCanvas = existingOverlay.querySelector('canvas');
+
+    if (fullscreenCanvas && fullscreenCanvas.chart) {
+        fullscreenCanvas.chart.destroy();
+    }
+
+    existingOverlay.remove();
+    return;
+}
+    
+    // Создаём оверлей
+    const overlay = document.createElement('div');
+    overlay.className = 'fullscreen-overlay';
+    
+    // Клонируем карточку
+    const clone = cardElement.cloneNode(true);
+    
+    // Добавляем кнопку закрытия
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '✕';
+    closeBtn.className = 'close-fullscreen-btn';
+    closeBtn.onclick = function() {
+        overlay.remove();
+    };
+    
+    overlay.appendChild(clone);
+    overlay.appendChild(closeBtn);
+    document.body.appendChild(overlay);
+    
+    // Перерисовываем графики в клоне
+    setTimeout(() => {
+        const cloneCanvas = clone.querySelector('canvas');
+        const originalCanvas = cardElement.querySelector('canvas');
+        if (cloneCanvas && originalCanvas && originalCanvas.chart) {
+            const ctx = cloneCanvas.getContext('2d');
+            const originalChart = originalCanvas.chart;
+           const configClone = structuredClone(originalChart.config);
+const newChart = new Chart(ctx, configClone);
+            cloneCanvas.chart = newChart;
+            
+            // Если это карточка с unifiedChart, обновляем кнопки и связываем с новым графиком
+            if (cardElement.id === 'unifiedCard' || clone.querySelector('#unifiedChart')) {
+                const newUnifiedChart = newChart;
+                const metricBtns = clone.querySelectorAll('.metric-btn');
+                
+                // Удаляем старые onclick атрибуты и добавляем новые обработчики
+                metricBtns.forEach(btn => {
+                    const oldOnclick = btn.getAttribute('onclick');
+                    if (oldOnclick && oldOnclick.includes('switchMetric')) {
+                        btn.removeAttribute('onclick');
+                        
+                        // Определяем метрику по id кнопки или тексту
+                        let metric = 'akb';
+                        if (btn.id === 'btnSales') metric = 'sales';
+                        else if (btn.id === 'btnSku') metric = 'sku';
+                        else if (btn.id === 'btnAKB') metric = 'akb';
+                        else if (btn.textContent.includes('продажи')) metric = 'sales';
+                        else if (btn.textContent.includes('SKU')) metric = 'sku';
+                        
+                        // Добавляем новый обработчик, который работает с графиком в полноэкранном режиме
+                        btn.addEventListener('click', () => {
+                            // Обновляем активную кнопку в полноэкранном режиме
+                            metricBtns.forEach(b => b.classList.remove('active'));
+                            btn.classList.add('active');
+                            
+                            // Обновляем данные в графике
+                            newUnifiedChart.data.datasets[0].data = unifiedData[metric].data2025;
+                            newUnifiedChart.data.datasets[1].data = unifiedData[metric].data2026;
+                            newUnifiedChart.data.datasets[2].data = unifiedData[metric].yearOverYearPct;
+                            newUnifiedChart.data.datasets[3].data = unifiedData[metric].monthOverMonthPct;
+                            newUnifiedChart.data.datasets[4].data = unifiedData[metric].yearOverYearAbs;
+                            newUnifiedChart.data.datasets[5].data = unifiedData[metric].monthOverMonthAbs;
+                            
+                            newUnifiedChart.options.scales.y.title.text = unifiedData[metric].yTitle;
+                            newUnifiedChart.options.scales.y2.title.text = `Отклонение (${unifiedData[metric].unit})`;
+                            
+                            newUnifiedChart.update();
+                        });
+                    }
+                });
+            }
+        }
+    }, 100);
+}
+// Расширенная функция с дополнительными параметрами
+function saveChartAsJPEG(canvasId, filename = 'chart', quality = 0.95) {
+    const originalCanvas = document.getElementById(canvasId);
+    if (!originalCanvas) {
+        console.error('Canvas not found');
+        return;
+    }
+    
+    // Проверяем, есть ли у canvas размеры
+    let width = originalCanvas.width;
+    let height = originalCanvas.height;
+    
+    // Если canvas ещё не отрисован с явными размерами, используем стили
+    if (width === 0 || height === 0) {
+        width = originalCanvas.offsetWidth;
+        height = originalCanvas.offsetHeight;
+    }
+    
+    // Создаём временный canvas
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    const ctx = tempCanvas.getContext('2d');
+    
+    // Заливаем белый фон
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Рисуем график с сохранением пропорций
+    ctx.drawImage(originalCanvas, 0, 0, width, height);
+    
+    // Добавляем небольшую тень для улучшения внешнего вида (опционально)
+    ctx.shadowBlur = 0; // отключаем тень для чистого фона
+    
+    // Сохраняем
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+    link.download = `${filename}_${timestamp}.jpg`;
+    link.href = tempCanvas.toDataURL('image/jpeg', quality);
+    link.click();
+}
+
+// Функция для сохранения с выбором формата (JPEG/PNG)
+function saveChartAsImage(canvasId, filename = 'chart', format = 'jpeg') {
+    const originalCanvas = document.getElementById(canvasId);
+    if (!originalCanvas) {
+        console.error('Canvas not found');
+        return;
+    }
+    
+    const tempCanvas = document.createElement('canvas');
+    const ctx = tempCanvas.getContext('2d');
+    
+    tempCanvas.width = originalCanvas.width;
+    tempCanvas.height = originalCanvas.height;
+    
+    // Белый фон
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    
+    // Рисуем график
+    ctx.drawImage(originalCanvas, 0, 0);
+    
+    const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+    const link = document.createElement('a');
+    
+    if (format === 'png') {
+        link.download = `${filename}_${timestamp}.png`;
+        link.href = tempCanvas.toDataURL('image/png');
+    } else {
+        link.download = `${filename}_${timestamp}.jpg`;
+        link.href = tempCanvas.toDataURL('image/jpeg', 0.95);
+    }
+    
+    link.click();
+}
+
+// Вспомогательная функция для показа выбора формата
+function showSaveOptions(canvasId, defaultFilename) {
+    const choice = confirm('Нажмите OK для JPEG, Отмена для PNG');
+    if (choice) {
+        saveChartAsImage(canvasId, defaultFilename, 'jpeg');
+    } else {
+        saveChartAsImage(canvasId, defaultFilename, 'png');
+    }
+}
+
+// Функция для расчета потерянных СКЮ для иерархической группировки
+function calculateLostSKUHierarchy(inventoryData, currentMonth, currentYear, currentMonthNum) {
+    // Сортируем данные по дате
+    const sortedData = [...inventoryData].sort((a, b) => {
+        if (a.year !== b.year) return a.year - b.year;
+        return a.monthNum - b.monthNum;
+    });
+    
+    // Определяем матрицу за последние 6 месяцев (исключая текущий месяц)
+    const matrixMonths = [];
+    for (let i = 1; i <= 6; i++) {
+        let targetMonth = currentMonthNum - i;
+        let targetYear = currentYear;
+        if (targetMonth <= 0) {
+            targetMonth += 12;
+            targetYear--;
+        }
+        matrixMonths.push({ year: targetYear, monthNum: targetMonth });
+    }
+    
+    // Группируем данные по иерархии: ДТ -> Тип -> ТМ
+    const hierarchyMap = new Map(); // Key: "dt|type|brand"
+    
+    sortedData.forEach(item => {
+        const hierarchyKey = `${item.dt}|${item.type}|${item.brand}`;
+        if (!hierarchyMap.has(hierarchyKey)) {
+            hierarchyMap.set(hierarchyKey, {
+                dt: item.dt,
+                type: item.type,
+                brand: item.brand,
+                matrixSKU: new Set(),      // СКЮ за последние 6 месяцев
+                currentSKU: new Set(),     // СКЮ в текущем месяце
+                totalStock: 0              // Сумма остатков
+            });
+        }
+        
+        const record = hierarchyMap.get(hierarchyKey);
+        
+        // Суммируем остатки
+        if (item.startStock > 0) {
+            record.totalStock += item.startStock;
+        }
+        
+        // Определяем, относится ли запись к матрице или текущему месяцу
+        const isInMatrix = matrixMonths.some(m => m.year === item.year && m.monthNum === item.monthNum);
+        const isCurrentMonth = (item.year === currentYear && item.monthNum === currentMonthNum);
+        
+        if (isInMatrix && item.skuName) {
+            record.matrixSKU.add(item.skuName);
+        }
+        
+        if (isCurrentMonth && item.skuName) {
+            record.currentSKU.add(item.skuName);
+        }
+    });
+    
+    // Рассчитываем долю потерянных СКЮ для каждой иерархической единицы
+    const result = [];
+    for (let [key, record] of hierarchyMap.entries()) {
+        const matrixSize = record.matrixSKU.size;
+        let lostPercent = 0;
+        
+        if (matrixSize > 0) {
+            // Потерянные СКЮ = те, что есть в матрице, но нет в текущем месяце
+            let lostCount = 0;
+            for (let sku of record.matrixSKU) {
+                if (!record.currentSKU.has(sku)) {
+                    lostCount++;
+                }
+            }
+            lostPercent = (lostCount / matrixSize) * 100;
+        }
+        
+        result.push({
+            dt: record.dt,
+            type: record.type || "Не указан",
+            brand: record.brand || "Не указана",
+            totalStock: record.totalStock,
+            lostSKUPercent: lostPercent,
+            matrixSKUCount: matrixSize,
+            currentSKUCount: record.currentSKU.size
+        });
+    }
+    
+    return result;
+}
+
+// Функция для создания иерархической HTML-таблицы остатков
+function renderInventoryHierarchyTable(inventoryHierarchy) {
+    const container = document.getElementById('inventoryTable');
+    if (!container) return;
+    
+    if (!inventoryHierarchy || inventoryHierarchy.length === 0) {
+        container.innerHTML = '<div class="table-status">⚠️ Нет данных об остатках для выбранного периода</div>';
+        const statusElem = document.getElementById('inventoryStatus');
+        if (statusElem) statusElem.style.display = 'none';
+        return;
+    }
+    
+    // Группируем по ДТ
+    const dtMap = new Map();
+    inventoryHierarchy.forEach(item => {
+        if (!dtMap.has(item.dt)) {
+            dtMap.set(item.dt, []);
+        }
+        dtMap.get(item.dt).push(item);
+    });
+    
+    let html = `
+        <div class="table-container-scroll">
+            <table class="dynamic-table">
+                <thead>
+                    <tr>
+                        <th>Дистрибьютор (ДТ)</th>
+                        <th>Начальный остаток, кг</th>
+                        <th>Доля потерянных СКЮ, %</th>
+                        <th style="width: 40px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    // Сортируем ДТ по алфавиту
+    const sortedDTs = Array.from(dtMap.keys()).sort();
+    
+    for (let dt of sortedDTs) {
+        const items = dtMap.get(dt);
+        const dtTotalStock = items.reduce((sum, i) => sum + i.totalStock, 0);
+        
+        // Временный расчет для ДТ (нужно доработать для полной точности)
+        const dtLostPercent = items.length > 0 
+            ? items.reduce((sum, i) => sum + i.lostSKUPercent, 0) / items.length 
+            : 0;
+        // Строка ДТ (родительская)
+html += `
+    <tr class="dt-row" data-dt="${dt.replace(/[^a-zA-Z0-9]/g, '_')}" style="cursor: pointer; background: #f8f9fc; font-weight: 600;">
+        <td><span class="dt-expand" style="display: inline-block; width: 20px; text-align: center;">▶</span> ${dt.substring(0, 50)}${dt.length > 50 ? '...' : ''}</td>
+        <td><strong>${Math.round(dtTotalStock).toLocaleString()} кг</strong></td>
+        <td><strong style="color: ${dtLostPercent > 30 ? '#C44B3C' : (dtLostPercent > 15 ? '#E8A317' : '#2A7A4B')}">${dtLostPercent.toFixed(1)}%</strong></td>
+        <td></td>
+    </tr>
+`;
+        
+        // Группируем по Типу корма внутри ДТ
+        const typeMap = new Map();
+        items.forEach(item => {
+            const typeKey = item.type || "Не указан";
+            if (!typeMap.has(typeKey)) {
+                typeMap.set(typeKey, []);
+            }
+            typeMap.get(typeKey).push(item);
+        });
+        
+        const sortedTypes = Array.from(typeMap.keys()).sort();
+        
+        for (let type of sortedTypes) {
+            const typeItems = typeMap.get(type);
+            const typeTotalStock = typeItems.reduce((sum, i) => sum + i.totalStock, 0);
+            const typeLostPercent = typeItems.reduce((sum, i) => sum + i.lostSKUPercent, 0) / typeItems.length;
+            
+// Строка Тип корма (дочерняя) - с возможностью раскрытия
+html += `
+    <tr class="type-row-${dt.replace(/[^a-zA-Z0-9]/g, '_')} type-parent-row" data-dt="${dt.replace(/[^a-zA-Z0-9]/g, '_')}" data-type="${type.replace(/[^a-zA-Z0-9]/g, '_')}" style="display: none; cursor: pointer; background: #f0f4f8;">
+        <td style="padding-left: 30px;"><span class="type-expand-${dt.replace(/[^a-zA-Z0-9]/g, '_')}-${type.replace(/[^a-zA-Z0-9]/g, '_')}" style="display: inline-block; width: 20px; text-align: center;">▶</span> ${type}</td>
+        <td><strong>${Math.round(typeTotalStock).toLocaleString()} кг</strong></td>
+        <td><strong style="color: ${typeLostPercent > 30 ? '#C44B3C' : (typeLostPercent > 15 ? '#E8A317' : '#2A7A4B')}">${typeLostPercent.toFixed(1)}%</strong></td>
+        <td></td>
+    </tr>
+`;
+            
+            // Строки Торговых марок (листовые)
+            for (let item of typeItems) {
+                const brandName = item.brand || "Не указана";
+                const lostColor = item.lostSKUPercent > 30 ? '#C44B3C' : (item.lostSKUPercent > 15 ? '#E8A317' : '#2A7A4B');
+                
+html += `
+    <tr class="brand-row-${dt.replace(/[^a-zA-Z0-9]/g, '_')}-${type.replace(/[^a-zA-Z0-9]/g, '_')}" data-type-parent="${dt.replace(/[^a-zA-Z0-9]/g, '_')}-${type.replace(/[^a-zA-Z0-9]/g, '_')}" style="display: none;">
+        <td style="padding-left: 60px;">${brandName}</td>
+        <td>${Math.round(item.totalStock).toLocaleString()} кг</td>
+        <td style="color: ${lostColor}; font-weight: 600;">${item.lostSKUPercent.toFixed(1)}%</td>
+        <td><span class="tooltip" title="Матрица: ${item.matrixSKUCount} СКЮ | Текущие: ${item.currentSKUCount} СКЮ">ℹ️</span></td>
+    </tr>
+`;
+            }
+        }
+    }
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <div class="insight-text" style="margin-top: 16px; padding: 12px; background: var(--gray-50); border-radius: 12px;">
+            💡 <strong>Аналитика по остаткам:</strong><br>
+            • <strong>Доля потерянных СКЮ</strong> — показывает, сколько уникальных товаров (из тех, что были в ассортименте за последние 6 месяцев) отсутствует в текущем месяце.<br>
+            • <strong>Высокий процент (>30%)</strong> — сигнал о возможных проблемах с поставками или снижении ассортимента.<br>
+            • 📁 <strong>Кликните на строку ДТ</strong> для раскрытия детализации по типам корма и торговым маркам.
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    
+// Добавляем обработчики для раскрытия/сворачивания ДТ
+document.querySelectorAll('.dt-row').forEach(row => {
+    row.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const dtId = this.dataset.dt;
+        const typeRows = document.querySelectorAll(`.type-row-${dtId}`);
+        const expandSpan = this.querySelector('.dt-expand');
+        
+        const isExpanded = typeRows.length > 0 && typeRows[0].style.display !== 'none';
+        
+        typeRows.forEach(r => {
+            r.style.display = isExpanded ? 'none' : '';
+        });
+        
+        if (expandSpan) {
+            expandSpan.textContent = isExpanded ? '▶' : '▼';
+        }
+    });
+});
+
+// Добавляем обработчики для раскрытия/сворачивания Типов корма
+document.querySelectorAll('.type-parent-row').forEach(row => {
+    row.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const dtId = this.dataset.dt;
+        const typeName = this.dataset.type;
+        const brandRows = document.querySelectorAll(`.brand-row-${dtId}-${typeName}`);
+        const expandSpan = this.querySelector(`.type-expand-${dtId}-${typeName}`);
+        
+        const isExpanded = brandRows.length > 0 && brandRows[0].style.display !== 'none';
+        
+        brandRows.forEach(r => {
+            r.style.display = isExpanded ? 'none' : '';
+        });
+        
+        if (expandSpan) {
+            expandSpan.textContent = isExpanded ? '▶' : '▼';
+        }
+    });
+});
+    
+    const statusElem = document.getElementById('inventoryStatus');
+    if (statusElem) statusElem.style.display = 'none';
+}
+// Функция для экспорта иерархической таблицы остатков в Excel
+function exportInventoryToExcel(inventoryHierarchy) {
+    if (!inventoryHierarchy || inventoryHierarchy.length === 0) {
+        alert('Нет данных об остатках для выгрузки');
+        return;
+    }
+    
+    // Подготавливаем данные для Excel (уплощенная структура)
+    const excelData = [];
+    
+    // Заголовки
+    excelData.push(['Дистрибьютор (ДТ)', 'Тип корма', 'Торговая марка', 'Начальный остаток, кг', 'Доля потерянных СКЮ, %', 'Матрица СКЮ', 'Текущие СКЮ']);
+    
+    // Группируем по ДТ
+    const dtMap = new Map();
+    inventoryHierarchy.forEach(item => {
+        if (!dtMap.has(item.dt)) {
+            dtMap.set(item.dt, []);
+        }
+        dtMap.get(item.dt).push(item);
+    });
+    
+    const sortedDTs = Array.from(dtMap.keys()).sort();
+    
+    for (let dt of sortedDTs) {
+        const items = dtMap.get(dt);
+        const dtTotalStock = items.reduce((sum, i) => sum + i.totalStock, 0);
+        const dtLostPercent = items.length > 0 
+            ? items.reduce((sum, i) => sum + i.lostSKUPercent, 0) / items.length 
+            : 0;
+        const dtMatrixSKU = items.reduce((sum, i) => sum + i.matrixSKUCount, 0);
+        const dtCurrentSKU = items.reduce((sum, i) => sum + i.currentSKUCount, 0);
+        
+        // Строка ДТ
+        excelData.push([dt, '—', '—', Math.round(dtTotalStock), dtLostPercent.toFixed(1), dtMatrixSKU, dtCurrentSKU]);
+        
+        // Группируем по Типу корма
+        const typeMap = new Map();
+        items.forEach(item => {
+            const typeKey = item.type || "Не указан";
+            if (!typeMap.has(typeKey)) {
+                typeMap.set(typeKey, []);
+            }
+            typeMap.get(typeKey).push(item);
+        });
+        
+        const sortedTypes = Array.from(typeMap.keys()).sort();
+        
+        for (let type of sortedTypes) {
+            const typeItems = typeMap.get(type);
+            const typeTotalStock = typeItems.reduce((sum, i) => sum + i.totalStock, 0);
+            const typeLostPercent = typeItems.reduce((sum, i) => sum + i.lostSKUPercent, 0) / typeItems.length;
+            const typeMatrixSKU = typeItems.reduce((sum, i) => sum + i.matrixSKUCount, 0);
+            const typeCurrentSKU = typeItems.reduce((sum, i) => sum + i.currentSKUCount, 0);
+            
+            // Строка Типа корма
+            excelData.push([`  └─ ${dt}`, type, '—', Math.round(typeTotalStock), typeLostPercent.toFixed(1), typeMatrixSKU, typeCurrentSKU]);
+            
+            // Строки Торговых марок
+            for (let item of typeItems) {
+                const brandName = item.brand || "Не указана";
+                excelData.push([`    └─ ${dt}`, type, brandName, Math.round(item.totalStock), item.lostSKUPercent.toFixed(1), item.matrixSKUCount, item.currentSKUCount]);
+            }
+        }
+    }
+    
+    // Создаем и скачиваем Excel файл
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+    
+    // Настройка ширины колонок
+    ws['!cols'] = [
+        { wch: 35 }, // ДТ
+        { wch: 15 }, // Тип корма
+        { wch: 20 }, // Торговая марка
+        { wch: 18 }, // Остаток
+        { wch: 20 }, // Потеря СКЮ
+        { wch: 12 }, // Матрица СКЮ
+        { wch: 12 }  // Текущие СКЮ
+    ];
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Анализ_остатков');
+    XLSX.writeFile(wb, `Анализ_остатков_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.xlsx`);
+}
+function buildDashboard(salesData, inventoryDataParam = []) {
+    // Сохраняем исходные данные для фильтров (если еще не сохранены)
+    if (originalSalesData.length === 0) {
+        originalSalesData = [...salesData];
+    }
+    
+    // ДИАГНОСТИКА - проверяем, что пришло в функцию
+    console.log("=== buildDashboard получила ===");
+    console.log("salesData.length:", salesData.length);
+    console.log("inventoryDataParam.length:", inventoryDataParam ? inventoryDataParam.length : 0);
+    console.log("inventoryDataParam тип:", typeof inventoryDataParam);
+    if (inventoryDataParam && inventoryDataParam.length > 0) {
+        console.log("Первая запись inventoryDataParam:", inventoryDataParam[0]);
+    }
+    
+    if(!salesData.length) {
+        document.getElementById('dashboardContent').innerHTML = '<div class="loader">⚠️ Данные не распознаны. Проверьте структуру Excel.</div>';
+        return;
+    }
+    // Агрегации
+    const monthlyMap = new Map();
+    const yearlyMonthMap = new Map();
+    const akbMap = new Map();
+    const ttProductivityMap = new Map();
+    const brandMap = new Map();
+    const cityMap = new Map();
+    const channelKgMap = new Map();
+    const productMap = new Map();
+    let totalRevenue = 0, totalWeight = 0, weightedDiscount = 0;
+    
+    salesData.forEach(sale => {
+    const rev = sale.revenue;
+    const w = sale.weightKg;
+    if(rev <= 0 && w === 0) return;
+    totalRevenue += rev;
+    totalWeight += w;
+    weightedDiscount += rev * (sale.discount || 0);
+    
+    const monthKey = `${sale.year}-${sale.month}`;
+    if(!monthlyMap.has(monthKey)) monthlyMap.set(monthKey, { revenue: 0, weight: 0 });
+    const m = monthlyMap.get(monthKey);
+    m.revenue += rev;
+    m.weight += w;
+    
+    // 🔥 НОВЫЙ КОД ДЛЯ АКБ
+    if (!akbMap.has(monthKey)) {
+        akbMap.set(monthKey, new Set());
+    }
+    if (sale.ttAddress && sale.ttAddress !== "") {
+        akbMap.get(monthKey).add(sale.ttAddress);
+    }
+    
+    // 🔥 НОВЫЙ КОД ДЛЯ БЛОКА "Эффективность ТТ" (ПРЯМО ЗДЕСЬ, БЕЗ ВЛОЖЕННОГО forEach!)
+    if (!ttProductivityMap.has(monthKey)) {
+        ttProductivityMap.set(monthKey, { ttSet: new Set(), skuSet: new Set(), weight: 0 });
+    }
+    const prodData = ttProductivityMap.get(monthKey);
+    if (sale.ttAddress && sale.ttAddress !== "") {
+        prodData.ttSet.add(sale.ttAddress);
+    }
+    if (sale.productName && sale.productName !== "") {
+        prodData.skuSet.add(sale.productName);
+    }
+    if (sale.weightKg && sale.weightKg > 0) {
+        prodData.weight += sale.weightKg;
+    }
+    
+    // Для годового сравнения по месяцам
+    const yearMonthKey = `${sale.year}-${sale.month}`;
+    if(!yearlyMonthMap.has(yearMonthKey)) yearlyMonthMap.set(yearMonthKey, { year: sale.year, month: sale.month, weight: 0 });
+    const ym = yearlyMonthMap.get(yearMonthKey);
+    ym.weight += w;
+    
+    brandMap.set(sale.brand, (brandMap.get(sale.brand) || 0) + rev);
+    cityMap.set(sale.city, (cityMap.get(sale.city) || 0) + rev);
+    if(sale.channel) channelKgMap.set(sale.channel, (channelKgMap.get(sale.channel) || 0) + w);
+    
+    const prodKey = sale.productName.length > 55 ? sale.productName.slice(0,52)+"…" : sale.productName;
+    if(!productMap.has(prodKey)) productMap.set(prodKey, { revenue: 0, weight: 0, discount: sale.discount, category: sale.category });
+    const p = productMap.get(prodKey);
+    p.revenue += rev;
+    p.weight += w;
+    p.discount = Math.max(p.discount, sale.discount);
+});
+// ========== ДИАГНОСТИКА АКБ ==========
+console.log("=== ДИАГНОСТИКА АКБ ===");
+console.log("1. Всего записей salesData:", salesData.length);
+console.log("2. akbMap размер (месяцев):", akbMap.size);
+
+// Показать первые 5 записей с адресами ТТ
+let withAddress = 0;
+for (let i = 0; i < Math.min(salesData.length, 20); i++) {
+    if (salesData[i].ttAddress && salesData[i].ttAddress !== "") {
+        withAddress++;
+        console.log(`   Запись ${i}: год=${salesData[i].year}, месяц=${salesData[i].month}, адрес=${salesData[i].ttAddress}`);
+    }
+}
+console.log("3. Записей с адресом ТТ (первые 20):", withAddress);
+
+// Показать содержимое akbMap
+for (let [key, ttSet] of akbMap.entries()) {
+    console.log(`   ${key}: ${ttSet.size} ТТ -`, Array.from(ttSet).slice(0, 3));
+}
+
+// Какие годы есть в данных?
+const years = new Set();
+salesData.forEach(s => years.add(s.year));
+console.log("4. Годы в данных:", Array.from(years));
+
+// Какие месяцы есть в данных?
+const monthsInData = new Set();
+salesData.forEach(s => monthsInData.add(`${s.year}-${s.month}`));
+console.log("5. Месяцы в данных:", Array.from(monthsInData).slice(0, 10));
+// ========== КОНЕЦ ДИАГНОСТИКИ ==========
+        
+        const avgDiscount = totalRevenue ? (weightedDiscount / totalRevenue) : 0;
+        const monthOrder = {
+    'Январь': 1,
+    'Февраль': 2,
+    'Март': 3,
+    'Апрель': 4,
+    'Май': 5,
+    'Июнь': 6,
+    'Июль': 7,
+    'Август': 8,
+    'Сентябрь': 9,
+    'Октябрь': 10,
+    'Ноябрь': 11,
+    'Декабрь': 12
+};
+
+const sortedMonths = Array.from(monthlyMap.keys()).sort((a, b) => {
+
+    const [yearA, monthA] = a.split('-');
+    const [yearB, monthB] = b.split('-');
+
+    if (yearA !== yearB) {
+        return Number(yearA) - Number(yearB);
+    }
+
+    return monthOrder[monthA] - monthOrder[monthB];
+});
+        const monthlyRevenues = sortedMonths.map(m => monthlyMap.get(m).revenue / 1000);
+        const monthLabels = sortedMonths.map(m => {
+            const [year, mon] = m.split('-');
+            return `${mon.slice(0,3)}'${year.slice(2)}`;
+        });
+        
+        // Рост
+        let growthRate = 0;
+        if(sortedMonths.length >= 4) {
+            const last2 = sortedMonths.slice(-2).reduce((sum,m) => sum + monthlyMap.get(m).revenue, 0);
+            const prev2 = sortedMonths.slice(-4,-2).reduce((sum,m) => sum + monthlyMap.get(m).revenue, 0);
+            growthRate = prev2 ? ((last2 - prev2)/prev2 * 100) : 0;
+        } else if(sortedMonths.length >= 2) {
+            const last = monthlyMap.get(sortedMonths[sortedMonths.length-1]).revenue;
+            const first = monthlyMap.get(sortedMonths[0]).revenue;
+            growthRate = first ? ((last - first)/first * 100) : 0;
+        }
+        
+        const topBrands = Array.from(brandMap.entries()).map(([b,rev]) => ({brand: b || "Другое", revenue: rev})).sort((a,b)=>b.revenue - a.revenue).slice(0,5);
+        const topCities = Array.from(cityMap.entries()).map(([c,rev]) => ({city: c, revenue: rev})).sort((a,b)=>b.revenue - a.revenue).slice(0,6);
+        const topChannels = Array.from(channelKgMap.entries()).map(([ch,kg]) => ({channel: ch, kg})).sort((a,b)=>b.kg - a.kg).slice(0,5);
+        const topProducts = Array.from(productMap.entries()).map(([name,data]) => ({name, revenue: data.revenue, weight: data.weight, disc: data.discount, cat: data.category})).sort((a,b)=>b.revenue - a.revenue).slice(0,12);
+        
+        const mainCity = topCities[0]?.city || "Алматы";
+        const mainBrand = topBrands[0]?.brand || "AJO";
+        const mainChannel = topChannels[0]?.channel || "ВЭД";
+        const trendIcon = growthRate > 2 ? '' : (growthRate < -2 ? '' : '');
+        const trendColor = growthRate > 2 ? '#2A7A4B' : (growthRate < -2 ? '#C44B3C' : '#E8A317');
+        
+        const insightHtml = `
+            <div class="insight-title">
+                <span>АНАЛИТИЧЕСКОЕ РЕЗЮМЕ</span>
+            </div>
+            <div class="insight-text">
+                ${trendIcon} <strong style="color:${trendColor}">${growthRate > 0 ? '+' : ''}${growthRate.toFixed(1)}% динамика</strong> за последний период. 
+                Бренд <strong>${mainBrand}</strong> генерирует ${(topBrands[0]?.revenue/totalRevenue*100).toFixed(1)}% выручки. 
+                Географический фокус — <strong>${mainCity}</strong> (${(topCities[0]?.revenue/totalRevenue*100).toFixed(1)}% от продаж). 
+                Канал «${mainChannel}» занимает ${(topChannels[0]?.kg/totalWeight*100).toFixed(1)}% в натуральном объёме. 
+                ${growthRate > 0 ? '🚀 Драйверы роста: крупная фасовка (10 кг), активность бридеров и экспансия в регионы.' : '🎯 Рекомендуется усилить промо в сегменте бридеров и развивать корма супер-премиум.'}
+            </div>
+        `;
+        
+// Функция для расчета отклонений для KPI карточек (включая промо)
+function calculateKPIDeviations(salesData) {
+    // Агрегируем данные по годам
+    let totalSales2025 = 0;
+    let totalSales2026 = 0;
+    let akb2025 = new Set();
+    let akb2026 = new Set();
+    let ttProductivity2025 = new Map();
+    let ttProductivity2026 = new Map();
+    
+    // Для расчета промо-доли
+    let promoWeight2025 = 0;
+    let promoWeight2026 = 0;
+    let totalWeight2025 = 0;
+    let totalWeight2026 = 0;
+    
+    salesData.forEach(sale => {
+        const w = sale.weightKg || 0;
+        const discount = sale.discount || 0;
+        const isPromo = discount >= 5; // Скидка 5% и выше считаем промо
+        
+        if (sale.year === 2025) {
+            totalSales2025 += w;
+            totalWeight2025 += w;
+            if (isPromo) {
+                promoWeight2025 += w;
+            }
+            if (sale.ttAddress && sale.ttAddress !== "") {
+                akb2025.add(sale.ttAddress);
+            }
+            
+            const monthKey = sale.month;
+            if (!ttProductivity2025.has(monthKey)) {
+                ttProductivity2025.set(monthKey, { ttSet: new Set(), weight: 0 });
+            }
+            const prod = ttProductivity2025.get(monthKey);
+            if (sale.ttAddress && sale.ttAddress !== "") {
+                prod.ttSet.add(sale.ttAddress);
+            }
+            if (w > 0) {
+                prod.weight += w;
+            }
+        } else if (sale.year === 2026) {
+            totalSales2026 += w;
+            totalWeight2026 += w;
+            if (isPromo) {
+                promoWeight2026 += w;
+            }
+            if (sale.ttAddress && sale.ttAddress !== "") {
+                akb2026.add(sale.ttAddress);
+            }
+            
+            const monthKey = sale.month;
+            if (!ttProductivity2026.has(monthKey)) {
+                ttProductivity2026.set(monthKey, { ttSet: new Set(), weight: 0 });
+            }
+            const prod = ttProductivity2026.get(monthKey);
+            if (sale.ttAddress && sale.ttAddress !== "") {
+                prod.ttSet.add(sale.ttAddress);
+            }
+            if (w > 0) {
+                prod.weight += w;
+            }
+        }
+    });
+    
+    // Рассчитываем промо-долю
+    const promoShare2025 = totalWeight2025 > 0 ? (promoWeight2025 / totalWeight2025) * 100 : 0;
+    const promoShare2026 = totalWeight2026 > 0 ? (promoWeight2026 / totalWeight2026) * 100 : 0;
+    const promoShareChange = promoShare2026 - promoShare2025;
+    
+    // Рассчитываем средние продажи на ТТ за год
+    let avgSalesPerTT2025 = 0;
+    let avgSalesPerTT2026 = 0;
+    
+    ttProductivity2025.forEach(prod => {
+        if (prod.ttSet.size > 0) {
+            avgSalesPerTT2025 += prod.weight / prod.ttSet.size;
+        }
+    });
+    avgSalesPerTT2025 = avgSalesPerTT2025 / (ttProductivity2025.size || 1);
+    
+    ttProductivity2026.forEach(prod => {
+        if (prod.ttSet.size > 0) {
+            avgSalesPerTT2026 += prod.weight / prod.ttSet.size;
+        }
+    });
+    avgSalesPerTT2026 = avgSalesPerTT2026 / (ttProductivity2026.size || 1);
+    
+    // Рассчитываем среднее количество SKU на ТТ
+    let avgSku2025 = 0;
+    let avgSku2026 = 0;
+    const skuMap2025 = new Map();
+    const skuMap2026 = new Map();
+    
+    salesData.forEach(sale => {
+        if (sale.year === 2025 && sale.ttAddress && sale.productName) {
+            if (!skuMap2025.has(sale.ttAddress)) {
+                skuMap2025.set(sale.ttAddress, new Set());
+            }
+            skuMap2025.get(sale.ttAddress).add(sale.productName);
+        } else if (sale.year === 2026 && sale.ttAddress && sale.productName) {
+            if (!skuMap2026.has(sale.ttAddress)) {
+                skuMap2026.set(sale.ttAddress, new Set());
+            }
+            skuMap2026.get(sale.ttAddress).add(sale.productName);
+        }
+    });
+    
+    let totalSku2025 = 0;
+    skuMap2025.forEach(skus => { totalSku2025 += skus.size; });
+    avgSku2025 = skuMap2025.size > 0 ? totalSku2025 / skuMap2025.size : 0;
+    
+    let totalSku2026 = 0;
+    skuMap2026.forEach(skus => { totalSku2026 += skus.size; });
+    avgSku2026 = skuMap2026.size > 0 ? totalSku2026 / skuMap2026.size : 0;
+    
+    // Рассчитываем отклонения
+    const salesChangePct = totalSales2025 > 0 ? ((totalSales2026 - totalSales2025) / totalSales2025 * 100) : 0;
+    const salesChangeAbs = totalSales2026 - totalSales2025;
+    const akbChangePct = akb2025.size > 0 ? ((akb2026.size - akb2025.size) / akb2025.size * 100) : 0;
+    const akbChangeAbs = akb2026.size - akb2025.size;
+    const avgSalesChangePct = avgSalesPerTT2025 > 0 ? ((avgSalesPerTT2026 - avgSalesPerTT2025) / avgSalesPerTT2025 * 100) : 0;
+    const avgSalesChangeAbs = avgSalesPerTT2026 - avgSalesPerTT2025;
+    const avgSkuChangePct = avgSku2025 > 0 ? ((avgSku2026 - avgSku2025) / avgSku2025 * 100) : 0;
+    const avgSkuChangeAbs = avgSku2026 - avgSku2025;
+    
+    return {
+        totalSales2025, totalSales2026, salesChangePct, salesChangeAbs,
+        akb2025: akb2025.size, akb2026: akb2026.size, akbChangePct, akbChangeAbs,
+        avgSalesPerTT2025, avgSalesPerTT2026, avgSalesChangePct, avgSalesChangeAbs,
+        avgSku2025, avgSku2026, avgSkuChangePct, avgSkuChangeAbs,
+        promoShare2025, promoShare2026, promoShareChange
+    };
+}
+
+const kpiData = calculateKPIDeviations(salesData);
+const kpiHtml = `
+<div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px;">
+    <!-- Карточка 1: Продажи, кг -->
+    <div class="kpi-card">
+        <div class="kpi-label">Продажи, кг</div>
+        <div class="kpi-value">${Math.round(kpiData.totalSales2026).toLocaleString()} кг</div>
+        <div class="kpi-trend">
+            <div class="trend-item">
+                <span class="trend-label">откл. к п.г., %</span>
+                <span class="trend-value" style="color: ${kpiData.salesChangePct >= 0 ? '#2A7A4B' : '#C44B3C'}">
+                    ${kpiData.salesChangePct >= 0 ? '▲' : '▼'} ${Math.abs(kpiData.salesChangePct).toFixed(1)}%
+                </span>
+            </div>
+            <div class="trend-item">
+                <span class="trend-label">откл. к п.г., кг</span>
+                <span class="trend-value" style="color: ${kpiData.salesChangeAbs >= 0 ? '#2A7A4B' : '#C44B3C'}">
+                    ${kpiData.salesChangeAbs >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(kpiData.salesChangeAbs)).toLocaleString()}
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Карточка 2: АКБ -->
+    <div class="kpi-card">
+        <div class="kpi-label">АКБ (активные ТТ)</div>
+        <div class="kpi-value">${kpiData.akb2026.toLocaleString()} ТТ</div>
+        <div class="kpi-trend">
+            <div class="trend-item">
+                <span class="trend-label">откл. к п.г., %</span>
+                <span class="trend-value" style="color: ${kpiData.akbChangePct >= 0 ? '#2A7A4B' : '#C44B3C'}">
+                    ${kpiData.akbChangePct >= 0 ? '▲' : '▼'} ${Math.abs(kpiData.akbChangePct).toFixed(1)}%
+                </span>
+            </div>
+            <div class="trend-item">
+                <span class="trend-label">откл. к п.г., ТТ</span>
+                <span class="trend-value" style="color: ${kpiData.akbChangeAbs >= 0 ? '#2A7A4B' : '#C44B3C'}">
+                    ${kpiData.akbChangeAbs >= 0 ? '▲' : '▼'} ${Math.abs(kpiData.akbChangeAbs).toLocaleString()}
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Карточка 3: Ср. продажи/ТТ -->
+    <div class="kpi-card">
+        <div class="kpi-label">Ср. продажи/ТТ (кг)</div>
+        <div class="kpi-value">${kpiData.avgSalesPerTT2026.toFixed(1)} кг</div>
+        <div class="kpi-trend">
+            <div class="trend-item">
+                <span class="trend-label">откл. к п.г., %</span>
+                <span class="trend-value" style="color: ${kpiData.avgSalesChangePct >= 0 ? '#2A7A4B' : '#C44B3C'}">
+                    ${kpiData.avgSalesChangePct >= 0 ? '▲' : '▼'} ${Math.abs(kpiData.avgSalesChangePct).toFixed(1)}%
+                </span>
+            </div>
+            <div class="trend-item">
+                <span class="trend-label">откл. к п.г., кг</span>
+                <span class="trend-value" style="color: ${kpiData.avgSalesChangeAbs >= 0 ? '#2A7A4B' : '#C44B3C'}">
+                    ${kpiData.avgSalesChangeAbs >= 0 ? '▲' : '▼'} ${Math.abs(kpiData.avgSalesChangeAbs).toFixed(1)}
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Карточка 4: Ср. кол-во СКЮ/ТТ -->
+    <div class="kpi-card">
+        <div class="kpi-label">Ср. кол-во СКЮ/ТТ</div>
+        <div class="kpi-value">${kpiData.avgSku2026.toFixed(1)} SKU</div>
+        <div class="kpi-trend">
+            <div class="trend-item">
+                <span class="trend-label">откл. к п.г., %</span>
+                <span class="trend-value" style="color: ${kpiData.avgSkuChangePct >= 0 ? '#2A7A4B' : '#C44B3C'}">
+                    ${kpiData.avgSkuChangePct >= 0 ? '▲' : '▼'} ${Math.abs(kpiData.avgSkuChangePct).toFixed(1)}%
+                </span>
+            </div>
+            <div class="trend-item">
+                <span class="trend-label">откл. к п.г., SKU</span>
+                <span class="trend-value" style="color: ${kpiData.avgSkuChangeAbs >= 0 ? '#2A7A4B' : '#C44B3C'}">
+                    ${kpiData.avgSkuChangeAbs >= 0 ? '▲' : '▼'} ${Math.abs(kpiData.avgSkuChangeAbs).toFixed(1)}
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Карточка 5: Промо -->
+    <div class="kpi-card" style="background: linear-gradient(135deg, #FFF8E7 0%, #FFFFFF 100%);">
+        <div class="kpi-label">Доля промо-продаж</div>
+        <div class="kpi-value" style="color: #E8A317;">${kpiData.promoShare2026.toFixed(1)}%</div>
+        <div class="kpi-trend">
+            <div class="trend-item">
+                <span class="trend-label">откл. к п.г., п.п.</span>
+                <span class="trend-value" style="color: ${kpiData.promoShareChange >= 0 ? '#2A7A4B' : '#C44B3C'}">
+                    ${kpiData.promoShareChange >= 0 ? '▲' : '▼'} ${Math.abs(kpiData.promoShareChange).toFixed(1)}
+                </span>
+            </div>
+            <div class="trend-item">
+                <span class="trend-label">порог скидки</span>
+                <span class="trend-value" style="color: #666;">≥5%</span>
+            </div>
+        </div>
+    </div>
+</div>
+`;
+        // ВСТАВИТЬ ПОСЛЕ ТОГО, КАК ЗАКОНЧИЛСЯ ЦИКЛ salesData.forEach
+// И ПЕРЕД ТЕМ, КАК НАЧИНАЕТСЯ ФОРМИРОВАНИЕ fullHtml
+
+  // Подготовка данных для АКБ графика
+    const monthsOrderAKB = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    const akb2025 = new Array(12).fill(0);
+    const akb2026 = new Array(12).fill(0);
+    
+    for (const [key, ttSet] of akbMap.entries()) {
+        const [year, month] = key.split('-');
+        const monthIndex = monthsOrderAKB.indexOf(month);
+        if (monthIndex !== -1) {
+            const count = ttSet.size;
+           if (year == '2025') akb2025[monthIndex] = count;
+else if (year == '2026') akb2026[monthIndex] = count;
+        }
+    }
+    
+    // Подготовка данных для блока "Эффективность ТТ"
+    const monthsOrder = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    const avgSalesPerTT2025 = new Array(12).fill(0);
+    const avgSalesPerTT2026 = new Array(12).fill(0);
+    const avgSkuPerTT2025 = new Array(12).fill(0);
+    const avgSkuPerTT2026 = new Array(12).fill(0);
+    
+    for (const [key, data] of ttProductivityMap.entries()) {
+        const [year, month] = key.split('-');
+        const monthIndex = monthsOrder.indexOf(month);
+        if (monthIndex !== -1 && data.ttSet.size > 0) {
+            const avgSales = data.weight / data.ttSet.size;
+            const avgSku = data.skuSet.size / data.ttSet.size;
+            if (year == '2025') {
+                avgSalesPerTT2025[monthIndex] = avgSales;
+                avgSkuPerTT2025[monthIndex] = avgSku;
+            } else if (year == '2026') {
+                avgSalesPerTT2026[monthIndex] = avgSales;
+                avgSkuPerTT2026[monthIndex] = avgSku;
+            }
+        }
+    }
+    
+    // Рассчитываем отклонения для АКБ (ТТ)
+    const akbYearOverYearDiff = [];
+    const akbMonthOverMonthDiff = [];
+    for (let i = 0; i < 12; i++) {
+        akbYearOverYearDiff.push(akb2026[i] - akb2025[i]);
+        if (i === 0) {
+            akbMonthOverMonthDiff.push(0);
+        } else {
+            akbMonthOverMonthDiff.push(akb2026[i] - akb2026[i-1]);
+        }
+    }
+    
+    // Процентные отклонения для АКБ
+    const akbYearOverYearPct = [];
+    const akbMonthOverMonthPct = [];
+    for (let i = 0; i < 12; i++) {
+        if (akb2025[i] > 0) {
+            akbYearOverYearPct.push(((akb2026[i] - akb2025[i]) / akb2025[i]) * 100);
+        } else {
+            akbYearOverYearPct.push(akb2026[i] > 0 ? 100 : 0);
+        }
+        if (i === 0) {
+            akbMonthOverMonthPct.push(0);
+        } else if (akb2026[i-1] > 0) {
+            akbMonthOverMonthPct.push(((akb2026[i] - akb2026[i-1]) / akb2026[i-1]) * 100);
+        } else {
+            akbMonthOverMonthPct.push(akb2026[i] > 0 ? 100 : 0);
+        }
+    }
+    
+    // Процентные отклонения для средних продаж на ТТ
+    const avgSalesYearOverYearPct = [];
+    const avgSalesMonthOverMonthPct = [];
+    for (let i = 0; i < 12; i++) {
+        if (avgSalesPerTT2025[i] > 0) {
+            avgSalesYearOverYearPct.push(((avgSalesPerTT2026[i] - avgSalesPerTT2025[i]) / avgSalesPerTT2025[i]) * 100);
+        } else {
+            avgSalesYearOverYearPct.push(avgSalesPerTT2026[i] > 0 ? 100 : 0);
+        }
+        if (i === 0) {
+            avgSalesMonthOverMonthPct.push(0);
+        } else if (avgSalesPerTT2026[i-1] > 0) {
+            avgSalesMonthOverMonthPct.push(((avgSalesPerTT2026[i] - avgSalesPerTT2026[i-1]) / avgSalesPerTT2026[i-1]) * 100);
+        } else {
+            avgSalesMonthOverMonthPct.push(avgSalesPerTT2026[i] > 0 ? 100 : 0);
+        }
+    }
+    
+    // Абсолютные отклонения для средних продаж на ТТ
+    const salesYearOverYearDiff = [];
+    const salesMonthOverMonthDiff = [];
+    for (let i = 0; i < 12; i++) {
+        salesYearOverYearDiff.push(avgSalesPerTT2026[i] - avgSalesPerTT2025[i]);
+        if (i === 0) {
+            salesMonthOverMonthDiff.push(0);
+        } else {
+            salesMonthOverMonthDiff.push(avgSalesPerTT2026[i] - avgSalesPerTT2026[i-1]);
+        }
+    }
+    
+    // Процентные и абсолютные отклонения для SKU
+    const skuYearOverYearPct = [];
+    const skuMonthOverMonthPct = [];
+    const skuYearOverYearDiff = [];
+    const skuMonthOverMonthDiff = [];
+    for (let i = 0; i < 12; i++) {
+        if (avgSkuPerTT2025[i] > 0) {
+            skuYearOverYearPct.push(((avgSkuPerTT2026[i] - avgSkuPerTT2025[i]) / avgSkuPerTT2025[i]) * 100);
+        } else {
+            skuYearOverYearPct.push(avgSkuPerTT2026[i] > 0 ? 100 : 0);
+        }
+        if (i === 0) {
+            skuMonthOverMonthPct.push(0);
+        } else if (avgSkuPerTT2026[i-1] > 0) {
+            skuMonthOverMonthPct.push(((avgSkuPerTT2026[i] - avgSkuPerTT2026[i-1]) / avgSkuPerTT2026[i-1]) * 100);
+        } else {
+            skuMonthOverMonthPct.push(avgSkuPerTT2026[i] > 0 ? 100 : 0);
+        }
+        skuYearOverYearDiff.push(avgSkuPerTT2026[i] - avgSkuPerTT2025[i]);
+        if (i === 0) {
+            skuMonthOverMonthDiff.push(0);
+        } else {
+            skuMonthOverMonthDiff.push(avgSkuPerTT2026[i] - avgSkuPerTT2026[i-1]);
+        }
+    }
+    
+    // ✅ ТЕПЕРЬ заполняем unifiedData (ПОСЛЕ того, как все переменные объявлены)
+    unifiedData.akb.data2025 = akb2025;
+    unifiedData.akb.data2026 = akb2026;
+    unifiedData.akb.yearOverYearPct = akbYearOverYearPct;
+    unifiedData.akb.monthOverMonthPct = akbMonthOverMonthPct;
+    unifiedData.akb.yearOverYearAbs = akbYearOverYearDiff;
+    unifiedData.akb.monthOverMonthAbs = akbMonthOverMonthDiff;
+    
+    unifiedData.sales.data2025 = avgSalesPerTT2025;
+    unifiedData.sales.data2026 = avgSalesPerTT2026;
+    unifiedData.sales.yearOverYearPct = avgSalesYearOverYearPct;
+    unifiedData.sales.monthOverMonthPct = avgSalesMonthOverMonthPct;
+    unifiedData.sales.yearOverYearAbs = salesYearOverYearDiff;
+    unifiedData.sales.monthOverMonthAbs = salesMonthOverMonthDiff;
+    
+    unifiedData.sku.data2025 = avgSkuPerTT2025;
+    unifiedData.sku.data2026 = avgSkuPerTT2026;
+    unifiedData.sku.yearOverYearPct = skuYearOverYearPct;
+    unifiedData.sku.monthOverMonthPct = skuMonthOverMonthPct;
+    unifiedData.sku.yearOverYearAbs = skuYearOverYearDiff;
+    unifiedData.sku.monthOverMonthAbs = skuMonthOverMonthDiff;
+// РАСЧЕТ ДАННЫХ ДЛЯ НОВОЙ ТАБЛИЦЫ - ПЕРЕДАЙТЕ salesData
+tableData = calculateTableData(salesData);
+
+const fullHtml = `
+ <!-- БЛОК ФИЛЬТРОВ -->
+<div class="filters-panel" style="padding: 8px 16px;">
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%;">
+        <span style="font-size: 0.7rem; font-weight: 600; color: var(--primary-dark); flex-shrink: 0;"></span>
+      
+        <div class="multiselect" data-field="year" data-label="Год" style="flex: 1; min-width: 60px;">
+            <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
+                <span class="multiselect-value">Год</span>
+                <span class="multiselect-arrow">▼</span>
+            </div>
+            <div class="multiselect-dropdown">
+                <div class="multiselect-search"><input type="text" placeholder="Поиск..."></div>
+                <div class="multiselect-options"></div>
+            </div>
+        </div>
+        
+        <div class="multiselect" data-field="month" data-label="Мес" style="flex: 1; min-width: 60px;">
+            <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
+                <span class="multiselect-value">Мес</span>
+                <span class="multiselect-arrow">▼</span>
+            </div>
+            <div class="multiselect-dropdown">
+                <div class="multiselect-search"><input type="text" placeholder="Поиск..."></div>
+                <div class="multiselect-options"></div>
+            </div>
+        </div>
+        
+        <div class="multiselect" data-field="dm" data-label="ДМ" style="flex: 1; min-width: 50px;">
+            <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
+                <span class="multiselect-value">ДМ</span>
+                <span class="multiselect-arrow">▼</span>
+            </div>
+            <div class="multiselect-dropdown">
+                <div class="multiselect-search"><input type="text" placeholder="Поиск..."></div>
+                <div class="multiselect-options"></div>
+            </div>
+        </div>
+        
+        <div class="multiselect" data-field="rm" data-label="РМ" style="flex: 1; min-width: 50px;">
+            <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
+                <span class="multiselect-value">РМ</span>
+                <span class="multiselect-arrow">▼</span>
+            </div>
+            <div class="multiselect-dropdown">
+                <div class="multiselect-search"><input type="text" placeholder="Поиск..."></div>
+                <div class="multiselect-options"></div>
+            </div>
+        </div>
+        
+        <div class="multiselect" data-field="dt" data-label="ДТ" style="flex: 1; min-width: 50px;">
+            <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
+                <span class="multiselect-value">ДТ</span>
+                <span class="multiselect-arrow">▼</span>
+            </div>
+            <div class="multiselect-dropdown">
+                <div class="multiselect-search"><input type="text" placeholder="Поиск..."></div>
+                <div class="multiselect-options"></div>
+            </div>
+        </div>
+        
+        <div class="multiselect" data-field="sv" data-label="СВ" style="flex: 1; min-width: 50px;">
+            <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
+                <span class="multiselect-value">СВ</span>
+                <span class="multiselect-arrow">▼</span>
+            </div>
+            <div class="multiselect-dropdown">
+                <div class="multiselect-search"><input type="text" placeholder="Поиск..."></div>
+                <div class="multiselect-options"></div>
+            </div>
+        </div>
+        
+        <div class="multiselect" data-field="tp" data-label="ТП" style="flex: 1; min-width: 50px;">
+            <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
+                <span class="multiselect-value">ТП</span>
+                <span class="multiselect-arrow">▼</span>
+            </div>
+            <div class="multiselect-dropdown">
+                <div class="multiselect-search"><input type="text" placeholder="Поиск..."></div>
+                <div class="multiselect-options"></div>
+            </div>
+        </div>
+        
+        <div class="multiselect" data-field="tm" data-label="ТМ" style="flex: 1; min-width: 50px;">
+            <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
+                <span class="multiselect-value">ТМ</span>
+                <span class="multiselect-arrow">▼</span>
+            </div>
+            <div class="multiselect-dropdown">
+                <div class="multiselect-search"><input type="text" placeholder="Поиск..."></div>
+                <div class="multiselect-options"></div>
+            </div>
+        </div>
+        
+        <div class="multiselect" data-field="type" data-label="Тип" style="flex: 1; min-width: 50px;">
+            <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
+                <span class="multiselect-value">Тип</span>
+                <span class="multiselect-arrow">▼</span>
+            </div>
+            <div class="multiselect-dropdown">
+                <div class="multiselect-search"><input type="text" placeholder="Поиск..."></div>
+                <div class="multiselect-options"></div>
+            </div>
+        </div>
+        
+        <button class="apply-filters-btn" id="applyFiltersBtn" style="padding: 4px 12px; font-size: 0.7rem; flex-shrink: 0;">Прим</button>
+        <button class="reset-filters-btn" id="resetFiltersBtn" style="padding: 4px 12px; font-size: 0.7rem; flex-shrink: 0;">Сбр</button>
+    </div>
+</div>
+    
+        <div class="kpi-grid">${kpiHtml}</div>
+    <div class="insight-premium">${insightHtml}</div>
+    <div class="chart-row">
+        <div class="chart-card" id="monthlyCard">
+    <div class="chart-header">
+        <div class="chart-icon"></div>
+        <h3>Динамика продаж по месяцам, кг</h3>
+        <div style="display: flex; gap: 8px; margin-left: auto;">
+            <button class="fullscreen-btn" onclick="saveChartAsJPEG('monthlyChart', 'dynamic_sales')" title="Сохранить как JPEG">📸</button>
+            <button class="fullscreen-btn" onclick="toggleFullscreen(document.getElementById('monthlyCard'))">⛶</button>
+        </div>
+    </div>
+    <canvas id="monthlyChart"></canvas>
+</div>
+        <div class="chart-card" id="unifiedCard">
+    <div class="chart-header">
+        <div class="chart-icon"></div>
+        <h3>Драйверы эффективности ТТ</h3>
+        <div style="display: flex; gap: 8px; margin-left: auto;">
+            <button class="fullscreen-btn" onclick="saveChartAsJPEG('unifiedChart', 'drivers_efficiency')" title="Сохранить как JPEG">📸</button>
+            <button class="fullscreen-btn" onclick="toggleFullscreen(document.getElementById('unifiedCard'))">⛶</button>
+        </div>
+    </div>
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+        <button id="btnAKB" class="metric-btn active" onclick="switchMetric('akb')">АКБ (ТТ)</button>
+        <button id="btnSales" class="metric-btn" onclick="switchMetric('sales')">Ср. продажи/ТТ (кг)</button>
+        <button id="btnSku" class="metric-btn" onclick="switchMetric('sku')">Ср. SKU/ТТ</button>
+    </div>
+    <canvas id="unifiedChart"></canvas>
+</div>
+    </div>
+   <div class="chart-row">
+   <div class="chart-card full-width">
+    <div class="chart-header">
+        <div class="chart-icon"></div>
+        <h3>Анализ остатков</h3>
+        <button class="export-btn" id="exportInventoryBtn" style="margin-left: auto; padding: 6px 16px; font-size: 0.75rem;">
+           Выгрузить в Excel
+        </button>
+    </div>
+    <div id="inventoryAnalysisContainer">
+        <div class="table-status" id="inventoryStatus">Загрузка данных об остатках...</div>
+        <div id="inventoryTable"></div>
+    </div>
+</div>
+</div>
+    <div class="chart-row"><div class="chart-card full-width" id="analyticsTable">
+    <div class="chart-header">
+        <div class="chart-icon"></div>
+        <h3>Аналитическая таблица эффективности ТТ</h3>
+        <button class="fullscreen-btn" onclick="toggleFullscreen(document.getElementById('analyticsTable'))">⛶</button>
+    </div>
+    <div class="metrics-selector">
+        <div class="metrics-title">
+            <span>⚙️ Настройка показателей</span>
+        </div>
+       <div class="simple-metrics">
+    <button class="metric-option" data-metric="year">Год</button>
+    <button class="metric-option" data-metric="month">Месяц</button>
+    <button class="metric-option" data-metric="sales_kg">Продажи, кг</button>
+    <button class="metric-option" data-metric="avg_sales_per_tt">Ср. продажи/ТТ</button>
+    <button class="metric-option" data-metric="akb_tt">АКБ, ТТ</button>
+    <button class="metric-option" data-metric="new_tt">Новые ТТ</button>
+    <button class="metric-option" data-metric="lost_tt">Потерянные ТТ</button>
+    <button class="metric-option" data-metric="avg_sku">Ср. кол-во СКЮ</button>
+    <div class="global-controls">
+        <button class="mode-selector" id="modeSelector">Значения</button>
+        <button class="period-selector" id="periodSelector">Год к году</button>
+        <button class="reset-btn" id="resetCustomBtn">Сбросить</button>
+    </div>
+    <button class="export-btn" id="exportExcelBtn">
+         Выгрузить в Excel
+    </button>
+</div>
+    </div>
+    <div id="dynamicTableContainer">
+        <div class="table-status">✅ Выберите показатели для отображения</div>
+    </div>
+</div>
+`;
+        document.getElementById('dashboardContent').innerHTML = fullHtml;
+    // Заполняем фильтры данными
+    populateFilters(originalSalesData);
+    // Инициализируем обработчики фильтров
+    initFilters();
+// Инициализация контролов таблицы
+initTableControls();
+// Рендерим начальную таблицу
+if (tableData && tableData.length > 0) {
+    renderDynamicTable();
+} else {
+    console.warn('tableData is empty, skipping renderDynamicTable');
+    // Можно показать сообщение пользователю
+    const tableContainer = document.getElementById('dynamicTableContainer');
+    if (tableContainer) {
+        tableContainer.innerHTML = '<div class="table-status">⚠️ Нет данных для отображения таблицы</div>';
+    }
+}
+        destroyCharts();
+        
+        // Инициализация графиков
+     // Подготовка данных для сравнения 2025 vs 2026 по месяцам (в кг)
+const data2025 = new Array(12).fill(0);
+const data2026 = new Array(12).fill(0);
+
+for (const [key, value] of yearlyMonthMap.entries()) {
+    const monthIndex = monthsOrder.indexOf(value.month);
+    if (monthIndex !== -1) {
+        if (value.year === 2025) data2025[monthIndex] += value.weight;
+        else if (value.year === 2026) data2026[monthIndex] += value.weight;
+    }
+}
+
+// Рассчитываем процентные отклонения
+const yearOverYearPct = []; // отклонение 2026 к 2025
+const monthOverMonthPct = []; // отклонение текущего месяца к предыдущему для 2026 года
+
+for (let i = 0; i < 12; i++) {
+    // Год к году (2026 vs 2025)
+    if (data2025[i] > 0) {
+        yearOverYearPct.push(((data2026[i] - data2025[i]) / data2025[i]) * 100);
+    } else {
+        yearOverYearPct.push(data2026[i] > 0 ? 100 : 0);
+    }
+    
+    // Месяц к месяцу (для 2026 года)
+    if (i === 0) {
+        monthOverMonthPct.push(0);
+    } else if (data2026[i-1] > 0) {
+        monthOverMonthPct.push(((data2026[i] - data2026[i-1]) / data2026[i-1]) * 100);
+    } else {
+        monthOverMonthPct.push(data2026[i] > 0 ? 100 : 0);
+    }
+}
+
+const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+currentCharts.monthly = new Chart(monthlyCtx, {
+    type: 'bar',
+    data: {
+        labels: monthsOrder,
+        datasets: [
+            {
+                label: '2025 год (кг)',
+                data: data2025,
+                backgroundColor: '#A0C4B0', // можно оставить или заменить на #006098 с прозрачностью
+                backgroundColor: 'rgba(0,96,152,0.6)',
+                borderRadius: 8,
+                barPercentage: 0.65,
+                datalabels: {
+                    anchor: 'end', align: 'top', offset: 0,
+                    color: '#006098', fontWeight: 'bold', font: { size: 11 },
+                    formatter: (value) => value > 0 ? value.toLocaleString() + ' кг' : ''
+                }
+            },
+            {
+                label: '2026 год (кг)',
+                data: data2026,
+                backgroundColor: 'rgba(0,192,222,0.7)',
+                borderRadius: 8,
+                barPercentage: 0.65,
+                datalabels: {
+                    anchor: 'end', align: 'top', offset: 0,
+                    color: '#00A0B8', fontWeight: 'bold', font: { size: 11 },
+                    formatter: (value) => value > 0 ? value.toLocaleString() + ' кг' : ''
+                }
+            },
+            {
+                label: 'Откл год к году (%)',
+                data: yearOverYearPct,
+                type: 'line',
+                pointRadius: 5,
+                pointBackgroundColor: (ctx) => ctx.raw < 0 ? '#FF4444' : '#006098',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointStyle: 'circle',
+                showLine: false,
+                yAxisID: 'y1',
+                hidden: false,
+                datalabels: {
+                    anchor: 'end', align: 'top', offset: 0,
+                    fontWeight: 'bold', font: { size: 10 },
+                    formatter: (value) => value !== 0 ? value.toFixed(1) + '%' : ''
+                }
+            },
+            {
+                label: 'Откл мес к мес (%)',
+                data: monthOverMonthPct,
+                type: 'line',
+                pointRadius: 5,
+                pointBackgroundColor: (ctx) => ctx.raw < 0 ? '#FF4444' : '#00C0DE',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointStyle: 'circle',
+                showLine: false,
+                yAxisID: 'y1',
+                hidden: true,
+                datalabels: {
+                    anchor: 'end', align: 'top', offset: 0,
+                    fontWeight: 'bold', font: { size: 10 },
+                    formatter: (value) => value !== 0 ? value.toFixed(1) + '%' : ''
+                }
+            }
+        ]
+    },
+   options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    layout: { padding: { top: 10 } },
+    plugins: {
+        legend: { position: 'top', labels: { font: { weight: '600', size: 11 } } },
+        tooltip: {
+            callbacks: {
+                label: (ctx) => {
+                    if (ctx.dataset.label.includes('%')) {
+                        return `${ctx.dataset.label}: ${ctx.raw.toFixed(1)}%`;
+                    }
+                    return `${ctx.dataset.label}: ${ctx.raw.toFixed(1)} ${unifiedData[currentMetric].unit}`;
+                }
+            }
+        },
+        datalabels: {
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            borderRadius: 4,
+            padding: { left: 4, right: 4, top: 2, bottom: 2 },
+            borderWidth: 0.5,
+            borderColor: 'rgba(0,0,0,0.1)',
+            color: (context) => {
+                const value = context.dataset.data[context.dataIndex];
+                const label = context.dataset.label;
+                if (label.includes('%') || label.includes('Откл')) {
+                    return value < 0 ? '#FF4444' : '#006098';
+                }
+                return label.includes('2025') ? '#006098' : '#00A0B8';
+            }
+        }
+    },
+        scales: {
+            y: {
+                title: { display: true, text: 'Объём продаж (кг)', font: { weight: '500' } },
+                position: 'left',
+                suggestedMax: Math.max(...data2025, ...data2026) * 1.15,
+                grid: { color: 'rgba(0,96,152,0.1)' }
+            },
+            y1: {
+                title: { display: true, text: 'Отклонение (%)', font: { weight: '500' } },
+                position: 'right',
+                grid: { drawOnChartArea: false },
+                ticks: { callback: (value) => value + '%' }
+            },
+            x: { 
+                title: { display: true, text: 'Месяц', font: { weight: '500' } },
+                grid: { color: 'rgba(0,96,152,0.1)' }
+            }
+        }
+    }
+});
+    // ✅ СОЗДАЁМ УНИВЕРСАЛЬНЫЙ ГРАФИК (ДОБАВИТЬ СЮДА)
+const unifiedCtx = document.getElementById('unifiedChart').getContext('2d');
+unifiedChart = new Chart(unifiedCtx, {
+    type: 'bar',
+    data: {
+        labels: monthsOrder,
+        datasets: [
+            {
+                label: '2025 год',
+                data: unifiedData.akb.data2025,
+                backgroundColor: 'rgba(0,96,152,0.6)',
+                borderRadius: 8,
+                barPercentage: 0.65,
+                datalabels: {
+                    anchor: 'end', align: 'top', offset: 0,
+                    color: '#006098', fontWeight: 'bold', font: { size: 11 },
+                    formatter: (value) => value > 0 ? value.toFixed(1) : ''
+                }
+            },
+            {
+                label: '2026 год',
+                data: unifiedData.akb.data2026,
+                backgroundColor: 'rgba(0,192,222,0.7)',
+                borderRadius: 8,
+                barPercentage: 0.65,
+                datalabels: {
+                    anchor: 'end', align: 'top', offset: 0,
+                    color: '#00A0B8', fontWeight: 'bold', font: { size: 11 },
+                    formatter: (value) => value > 0 ? value.toFixed(1) : ''
+                }
+            },
+            {
+                label: 'Откл год к году (%)',
+                data: unifiedData.akb.yearOverYearPct,
+                type: 'line',
+                pointRadius: 5,
+                pointBackgroundColor: (ctx) => ctx.raw < 0 ? '#FF4444' : '#006098',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointStyle: 'circle',
+                showLine: false,
+                yAxisID: 'y1',
+                hidden: false,
+                datalabels: {
+                    anchor: 'end', align: 'top', offset: 0,
+                    fontWeight: 'bold', font: { size: 10 },
+                    formatter: (value) => value !== 0 ? value.toFixed(1) + '%' : ''
+                }
+            },
+            {
+                label: 'Откл мес к мес (%)',
+                data: unifiedData.akb.monthOverMonthPct,
+                type: 'line',
+                pointRadius: 5,
+                pointBackgroundColor: (ctx) => ctx.raw < 0 ? '#FF4444' : '#00C0DE',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointStyle: 'circle',
+                showLine: false,
+                yAxisID: 'y1',
+                hidden: true,
+                datalabels: {
+                    anchor: 'end', align: 'top', offset: 0,
+                    fontWeight: 'bold', font: { size: 10 },
+                    formatter: (value) => value !== 0 ? value.toFixed(1) + '%' : ''
+                }
+            },
+            {
+                label: 'Откл год к году',
+                data: unifiedData.akb.yearOverYearAbs,
+                type: 'line',
+                pointRadius: 5,
+                pointBackgroundColor: (ctx) => ctx.raw < 0 ? '#FF4444' : '#006098',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointStyle: 'triangle',
+                showLine: false,
+                yAxisID: 'y2',
+                hidden: true,
+                datalabels: {
+                    anchor: 'end', align: 'top', offset: 0,
+                    fontWeight: 'bold', font: { size: 10 },
+                    formatter: (value) => value !== 0 ? (value > 0 ? '+' + value.toFixed(1) : value.toFixed(1)) : ''
+                }
+            },
+            {
+                label: 'Откл мес к мес',
+                data: unifiedData.akb.monthOverMonthAbs,
+                type: 'line',
+                pointRadius: 5,
+                pointBackgroundColor: (ctx) => ctx.raw < 0 ? '#FF4444' : '#00C0DE',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointStyle: 'triangle',
+                showLine: false,
+                yAxisID: 'y2',
+                hidden: true,
+                datalabels: {
+                    anchor: 'end', align: 'top', offset: 0,
+                    fontWeight: 'bold', font: { size: 10 },
+                    formatter: (value) => value !== 0 ? (value > 0 ? '+' + value.toFixed(1) : value.toFixed(1)) : ''
+                }
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        layout: { padding: { top: 10 } },
+       plugins: {
+    legend: { position: 'top', labels: { font: { weight: '600', size: 11 } } },
+    tooltip: {
+        callbacks: {
+            label: (ctx) => {
+                if (ctx.dataset.label.includes('%')) {
+                    return `${ctx.dataset.label}: ${ctx.raw.toFixed(1)}%`;
+                }
+                return `${ctx.dataset.label}: ${ctx.raw.toFixed(1)} ${unifiedData[currentMetric].unit}`;
+            }
+        }
+    },
+    datalabels: {
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        borderRadius: 4,
+        padding: { left: 4, right: 4, top: 2, bottom: 2 },
+        borderWidth: 0.5,
+        borderColor: 'rgba(0,0,0,0.1)',
+        color: (context) => {
+            const value = context.dataset.data[context.dataIndex];
+            const label = context.dataset.label;
+            if (label.includes('%') || label.includes('Откл')) {
+                return value < 0 ? '#FF4444' : '#006098';
+            }
+            return label.includes('2025') ? '#006098' : '#00A0B8';
+        }
+    }
+},
+        scales: {
+            y: {
+                title: { display: true, text: unifiedData.akb.yTitle, font: { weight: '500' } },
+                position: 'left',
+                grid: { color: 'rgba(0,96,152,0.1)' }
+            },
+            y1: {
+                title: { display: true, text: 'Отклонение (%)', font: { weight: '500' } },
+                position: 'right',
+                grid: { drawOnChartArea: false },
+                min: -100, max: 100,
+                ticks: { callback: (value) => value + '%' }
+            },
+            y2: {
+                title: { display: true, text: `Отклонение (${unifiedData.akb.unit})`, font: { weight: '500' } },
+                position: 'right',
+                grid: { drawOnChartArea: false },
+                ticks: { callback: (value) => value.toFixed(1) }
+            },
+            x: { 
+                title: { display: true, text: 'Месяц', font: { weight: '500' } },
+                grid: { color: 'rgba(0,96,152,0.1)' }
+            }
+        }
+    }
+});
+
+// Сохраняем ссылки для полноэкранного режима
+const monthlyCanvas = document.getElementById('monthlyChart');
+monthlyCanvas.chart = currentCharts.monthly;
+
+const unifiedCanvas = document.getElementById('unifiedChart');
+unifiedCanvas.chart = unifiedChart;
+
+// Диагностика остатков
+console.log("=== ДИАГНОСТИКА ОСТАТКОВ В buildDashboard ===");
+console.log("inventoryDataParam получено:", inventoryDataParam?.length);
+if (inventoryDataParam && inventoryDataParam.length > 0) {
+    console.log("Первая запись остатков:", inventoryDataParam[0]);
+    console.log("Все уникальные ДТ:", [...new Set(inventoryDataParam.map(i => i.dt))].slice(0, 5));
+    console.log("Диапазон дат:", {
+        minYear: Math.min(...inventoryDataParam.map(i => i.year)),
+        maxYear: Math.max(...inventoryDataParam.map(i => i.year)),
+        months: [...new Set(inventoryDataParam.map(i => `${i.month} ${i.year}`))].slice(0, 10)
+    });
+}
+
+// Рендерим таблицу остатков, если есть данные
+if (inventoryDataParam && inventoryDataParam.length > 0) {
+    // Находим максимальную дату (текущий месяц) в остатках
+    let maxYear = 0;
+    let maxMonth = 0;
+    let maxMonthNum = 0;
+    
+    inventoryDataParam.forEach(item => {
+        if (item.year > maxYear || (item.year === maxYear && item.monthNum > maxMonthNum)) {
+            maxYear = item.year;
+            maxMonthNum = item.monthNum;
+            maxMonth = item.month;
+        }
+    });
+    
+    if (maxYear > 0) {
+        const inventoryHierarchy = calculateLostSKUHierarchy(inventoryDataParam, maxMonth, maxYear, maxMonthNum);
+        renderInventoryHierarchyTable(inventoryHierarchy);
+        
+        // Привязываем кнопку экспорта
+        setTimeout(() => {
+            const exportBtn = document.getElementById('exportInventoryBtn');
+            if (exportBtn) {
+                // Удаляем старый обработчик, если есть
+                const newExportBtn = exportBtn.cloneNode(true);
+                exportBtn.parentNode.replaceChild(newExportBtn, exportBtn);
+                newExportBtn.addEventListener('click', () => {
+                    exportInventoryToExcel(inventoryHierarchy);
+                });
+            }
+        }, 100);
+    } else {
+        const container = document.getElementById('inventoryTable');
+        if (container) {
+            container.innerHTML = '<div class="table-status">⚠️ Не удалось определить текущий месяц в данных остатков</div>';
+            const statusElem = document.getElementById('inventoryStatus');
+            if (statusElem) statusElem.style.display = 'none';
+        }
+    }
+} else {
+    const container = document.getElementById('inventoryTable');
+    if (container) {
+        container.innerHTML = '<div class="table-status">📋 Лист "Остатки" не найден в файле. Добавьте лист с данными об остатках для анализа.</div>';
+        const statusElem = document.getElementById('inventoryStatus');
+        if (statusElem) statusElem.style.display = 'none';
+    }
+}
+}
+// ========== ЗАГРУЗКА ДАННЫХ ИЗ GOOGLE SHEETS (ПРЯМЫЕ ССЫЛКИ) ==========
+
+// Прямые ссылки на скачивание ваших файлов (Excel формат)
+const DATA_URLS = {
+    sales: 'https://docs.google.com/spreadsheets/d/1a60d7XFOwuqildqUc1Xth_2gDFsqTO6o/export?format=xlsx',
+    inventory: 'https://docs.google.com/spreadsheets/d/1lpkFaRW1fwetPunfTUsZUeD6afoLG3QE/export?format=xlsx',
+    promo: 'https://docs.google.com/spreadsheets/d/1vH74RwrmJ9vbaHgabGnxpMp97PrxzTA3/export?format=xlsx'
+};
+
+// Загрузка Excel файла по ссылке
+async function loadExcelFromUrl(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        // Берём первый лист (можно настроить)
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+        return rows;
+    } catch (error) {
+        console.error(`Ошибка загрузки: ${url}`, error);
+        return null;
+    }
+}
+
+// Парсинг продаж (индексы под ваш файл)
+function parseSalesDataFromRows(rows) {
+    const salesData = [];
+    
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length < 14) continue;
+        
+        // Индексы столбцов в вашем файле:
+        // 0 - Дистрибьютор, 1 - Торговая марка, 2 - Тип корма, 3 - Уникальное наименование товара
+        // 4 - Год, 5 - Месяц, 6 - Адрес ТТ LimKorm, 9 - СВ, 10 - РМ, 11 - ДМ
+        // 12 - Вес, кг, 13 - Канал (укр)
+        
+        const dt = row[0] ? String(row[0]).trim() : "";
+        const brand = row[1] ? String(row[1]).trim() : "";
+        const type = row[2] ? String(row[2]).trim() : "";
+        const productName = row[3] ? String(row[3]).trim() : "";
+        const year = row[4] ? parseInt(row[4]) : 0;
+        const monthRaw = row[5] ? String(row[5]).trim() : "";
+        const ttAddress = row[6] ? String(row[6]).trim() : "";
+        const sv = row[9] ? String(row[9]).trim() : "";
+        const rm = row[10] ? String(row[10]).trim() : "";
+        const dm = row[11] ? String(row[11]).trim() : "";
+        const weight = row[12] ? parseFloat(String(row[12]).replace(/,/g, '.')) : 0;
+        const channel = row[13] ? String(row[13]).trim() : "";
+        
+        const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+        let month = "";
+        if (monthRaw && !isNaN(parseInt(monthRaw))) {
+            month = monthNames[parseInt(monthRaw) - 1] || monthRaw;
+        } else {
+            month = monthRaw;
+        }
+        
+        if (!year || !month || weight === 0) continue;
+        
+        salesData.push({
+            year, month, brand, revenue: 0, city: "", channel, weightKg: weight,
+            productName, discount: 0, category: type || "Другое",
+            ttAddress: ttAddress,
+            dm: dm, rm: rm, dt: dt, sv: sv, tp: "", tm: brand, type: type
+        });
+    }
+    
+    console.log(`Загружено записей продаж: ${salesData.length}`);
+    return salesData;
+}
+
+// Парсинг остатков
+function parseInventoryDataFromRows(rows) {
+    const inventoryData = [];
+    
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length < 8) continue;
+        
+        // Индексы для остатков:
+        // 0 - Дистрибьютор, 1 - Сумма остатки на конец месяца, 3 - Торговая марка
+        // 4 - Уникальное наименование товара, 5 - Месяц, 6 - Год, 7 - Тип корма
+        
+        const dt = row[0] ? String(row[0]).trim() : "";
+        const startStock = row[1] ? parseFloat(String(row[1]).replace(/,/g, '.')) : 0;
+        const brand = row[3] ? String(row[3]).trim() : "";
+        const skuName = row[4] ? String(row[4]).trim() : "";
+        const monthRaw = row[5] ? String(row[5]).trim() : "";
+        const year = row[6] ? parseInt(row[6]) : 0;
+        const type = row[7] ? String(row[7]).trim() : "";
+        
+        const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+        let month = "";
+        let monthNum = 0;
+        if (monthRaw && !isNaN(parseInt(monthRaw))) {
+            monthNum = parseInt(monthRaw);
+            month = monthNames[monthNum - 1] || monthRaw;
+        } else {
+            month = monthRaw;
+        }
+        
+        if (!dt || !skuName) continue;
+        
+        inventoryData.push({
+            dt: dt, type: type, brand: brand,
+            startStock: startStock, skuName: skuName,
+            year: year, month: month, monthNum: monthNum,
+            date: `${year}-${monthNum}`
+        });
+    }
+    
+    console.log(`Загружено записей остатков: ${inventoryData.length}`);
+    return inventoryData;
+}
+// ГЛАВНАЯ ФУНКЦИЯ ЗАГРУЗКИ
+async function loadAllData() {
+    const dashboardDiv = document.getElementById('dashboardContent');
+    dashboardDiv.innerHTML = '<div class="loader">📁 Загрузка данных...</div>';
+    
+    try {
+        // 1. Загружаем продажи
+        dashboardDiv.innerHTML = '<div class="loader">📊 Загрузка данных продаж...</div>';
+        const salesRows = await loadExcelFromUrl(DATA_URLS.sales);
+        let allSalesData = [];
+        if (salesRows && salesRows.length > 1) {
+            allSalesData = parseSalesDataFromRows(salesRows);
+        }
+        
+        // 2. Загружаем остатки
+        dashboardDiv.innerHTML = '<div class="loader">📦 Загрузка данных об остатках...</div>';
+        const inventoryRows = await loadExcelFromUrl(DATA_URLS.inventory);
+        let allInventoryData = [];
+        if (inventoryRows && inventoryRows.length > 1) {
+            allInventoryData = parseInventoryDataFromRows(inventoryRows);
+        }
+        
+        if (allSalesData.length === 0) {
+            dashboardDiv.innerHTML = '<div class="loader">❌ Не удалось загрузить данные. Проверьте ссылки на файлы.</div>';
+            return;
+        }
+        
+        dashboardDiv.innerHTML = '<div class="loader">📈 Построение аналитики...</div>';
+        buildDashboard(allSalesData, allInventoryData);
+        
+    } catch (error) {
+        console.error('Ошибка загрузки:', error);
+        dashboardDiv.innerHTML = '<div class="loader">❌ Ошибка загрузки данных. Проверьте доступ к файлам.</div>';
+    }
+}
+
+// Запуск при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Скрываем кнопку загрузки Excel
+    const uploadBtn = document.querySelector('.upload-btn');
+    if (uploadBtn) {
+        uploadBtn.style.display = 'none';
+    }
+    
+    // Запускаем загрузку
+    loadAllData();
+});
+// Функция для расчета данных по месяцам
+function calculateTableData(salesData) {
+    const tableDataMap = new Map();
+    
+    salesData.forEach(sale => {
+        if (!sale.year || !sale.month) return;
+        
+        const key = `${sale.year}-${sale.month}`;
+        if (!tableDataMap.has(key)) {
+            tableDataMap.set(key, {
+                year: sale.year,
+                month: sale.month,
+                sales_kg: 0,
+                akb_tt: new Set(),
+                new_tt: new Set(),
+                lost_tt: new Set(),
+                avg_sales_per_tt: 0,
+                avg_sku: { ttSet: new Set(), skuSet: new Set() }
+            });
+        }
+        
+        const record = tableDataMap.get(key);
+        
+        // Продажи в кг
+        if (sale.weightKg && sale.weightKg > 0) {
+            record.sales_kg += sale.weightKg;
+        }
+        
+        // АКБ (уникальные ТТ)
+// ИСПРАВЛЕННЫЙ код:
+if (sale.ttAddress && sale.ttAddress !== "") {
+    record.akb_tt.add(sale.ttAddress);
+    
+    // Для средних продаж на ТТ (используем отдельный Set)
+    if (!record.avg_sales_per_tt_set) {
+        record.avg_sales_per_tt_set = new Set();
+    }
+    record.avg_sales_per_tt_set.add(sale.ttAddress);
+    
+    // Для SKU
+    if (typeof record.avg_sku.ttSet.add === 'function') {
+        record.avg_sku.ttSet.add(sale.ttAddress);
+    }
+}
+        if (sale.productName && sale.productName !== "") {
+            if (typeof record.avg_sku.skuSet.add === 'function') {
+                record.avg_sku.skuSet.add(sale.productName);
+            }
+        }
+    });
+    
+    // Преобразуем Set в размеры и считаем средние
+    const monthsList = Array.from(tableDataMap.keys()).sort();
+    const result = [];
+    
+    monthsList.forEach((key, idx) => {
+        const record = tableDataMap.get(key);
+        
+        // Расчет потерянных и новых ТТ
+        const currentTTs = record.akb_tt;
+        let newTTs = new Set();
+        let lostTTs = new Set();
+        
+        if (idx > 0) {
+            // Новые ТТ (появились в текущем месяце, не были в предыдущих 3 месяцах)
+            const last3Months = monthsList.slice(Math.max(0, idx - 3), idx);
+            const ttInLast3Months = new Set();
+            last3Months.forEach(monthKey => {
+                tableDataMap.get(monthKey).akb_tt.forEach(tt => ttInLast3Months.add(tt));
+            });
+            
+            currentTTs.forEach(tt => {
+                if (!ttInLast3Months.has(tt)) {
+                    newTTs.add(tt);
+                }
+            });
+            
+            // Потерянные ТТ (не покупали более 6 месяцев)
+            const next6Months = monthsList.slice(idx + 1, idx + 7);
+            const ttInNext6Months = new Set();
+            next6Months.forEach(monthKey => {
+                if (tableDataMap.get(monthKey)) {
+                    tableDataMap.get(monthKey).akb_tt.forEach(tt => ttInNext6Months.add(tt));
+                }
+            });
+            
+            currentTTs.forEach(tt => {
+                if (!ttInNext6Months.has(tt)) {
+                    lostTTs.add(tt);
+                }
+            });
+        }
+        
+        // Средние продажи на ТТ
+    let avgSalesPerTT = 0;
+if (record.avg_sales_per_tt_set && record.avg_sales_per_tt_set.size > 0) {
+    avgSalesPerTT = record.sales_kg / record.avg_sales_per_tt_set.size;
+} else if (record.akb_tt.size > 0) {
+    avgSalesPerTT = record.sales_kg / record.akb_tt.size;
+}
+       
+        // Среднее количество SKU на ТТ
+        let avgSkuPerTT = 0;
+        if (record.avg_sku.ttSet.size > 0) {
+            avgSkuPerTT = record.avg_sku.skuSet.size / record.avg_sku.ttSet.size;
+        } else if (record.akb_tt.size > 0) {
+            avgSkuPerTT = record.avg_sku.skuSet.size / record.akb_tt.size;
+        }
+        
+        result.push({
+            year: record.year,
+            month: record.month,
+            sales_kg: record.sales_kg,
+            akb_tt: record.akb_tt.size,
+            new_tt: newTTs.size,
+            lost_tt: lostTTs.size,
+            avg_sales_per_tt: avgSalesPerTT,
+            avg_sku: avgSkuPerTT
+        });
+    });
+    
+    return result;
+}
+
+// Получить настройки для конкретной метрики
+function getMetricSettings(metric) {
+    // Если есть индивидуальная настройка для колонки - используем её
+    if (columnCustomSettings.has(metric)) {
+        return columnCustomSettings.get(metric);
+    }
+    // Иначе возвращаем глобальные настройки
+    return { mode: globalMode, period: globalPeriod };
+}
+
+// Рассчитать отклонение для значения
+function calculateDeviation(currentValue, previousValue, mode) {
+    if (mode === 'percent') {
+        if (previousValue === 0 || previousValue === null) {
+            return currentValue !== 0 ? 100 : 0;
+        }
+        return ((currentValue - previousValue) / previousValue) * 100;
+    } else if (mode === 'absolute') {
+        return currentValue - previousValue;
+    }
+    return currentValue;
+}
+
+// Применить настройки к данным для конкретной метрики
+function applyMetricSettings(data, metric, settings) {
+    if (settings.mode === 'actual') {
+        return data.map(item => ({
+            ...item,
+            [metric]: item[metric],
+            [`${metric}_is_calculated`]: false
+        }));
+    }
+    
+    // Сортируем данные
+    const sorted = [...data].sort((a, b) => {
+        if (a.year !== b.year) return a.year - b.year;
+        return a.month - b.month;
+    });
+    
+    return sorted.map((item, idx) => {
+        let previousValue = null;
+        
+        if (settings.period === 'yoy') {
+            const prevYearItem = sorted.find(i => i.year === item.year - 1 && i.month === item.month);
+            previousValue = prevYearItem ? prevYearItem[metric] : null;
+        } else if (settings.period === 'mom' && idx > 0) {
+            previousValue = sorted[idx - 1][metric];
+        }
+        
+        const calculatedValue = calculateDeviation(item[metric], previousValue, settings.mode);
+        
+        return {
+            ...item,
+            [metric]: calculatedValue,
+            [`${metric}_original`]: item[metric],
+            [`${metric}_is_calculated`]: true,
+            [`${metric}_mode`]: settings.mode
+        };
+    });
+}
+
+// Применить все настройки ко всем метрикам
+function applyAllSettings(data) {
+    let result = [...data];
+    
+    numericMetrics.forEach(metric => {
+        const settings = getMetricSettings(metric);
+        result = applyMetricSettings(result, metric, settings);
+    });
+    
+    return result;
+}
+
+// Показать контекстное меню
+function showContextMenu(x, y, metric) {
+    // Удаляем существующее меню
+    const existingMenu = document.querySelector('.context-menu');
+    if (existingMenu) existingMenu.remove();
+    
+    const currentSettings = getMetricSettings(metric);
+    
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    
+    const items = [
+        { mode: 'actual', period: null, label: '📊 Значения', active: currentSettings.mode === 'actual' },
+        { divider: true },
+        { mode: 'percent', period: 'yoy', label: ' % год к году', active: currentSettings.mode === 'percent' && currentSettings.period === 'yoy' },
+        { mode: 'percent', period: 'mom', label: ' % месяц к месяцу', active: currentSettings.mode === 'percent' && currentSettings.period === 'mom' },
+        { divider: true },
+        { mode: 'absolute', period: 'yoy', label: ' Δ год к году', active: currentSettings.mode === 'absolute' && currentSettings.period === 'yoy' },
+        { mode: 'absolute', period: 'mom', label: ' Δ месяц к месяцу', active: currentSettings.mode === 'absolute' && currentSettings.period === 'mom' },
+        { divider: true },
+        { label: '🔄 Сбросить настройки', action: 'reset', active: false }
+    ];
+    
+    items.forEach(item => {
+        if (item.divider) {
+            const divider = document.createElement('div');
+            divider.className = 'context-menu-divider';
+            menu.appendChild(divider);
+        } else {
+            const menuItem = document.createElement('div');
+            menuItem.className = 'context-menu-item';
+            if (item.active) menuItem.classList.add('active');
+            menuItem.innerHTML = item.label;
+            
+            menuItem.addEventListener('click', () => {
+                if (item.action === 'reset') {
+                    columnCustomSettings.delete(metric);
+                } else if (item.mode === 'actual') {
+                    columnCustomSettings.delete(metric);
+                } else {
+                    columnCustomSettings.set(metric, { mode: item.mode, period: item.period });
+                }
+                renderDynamicTable();
+                menu.remove();
+            });
+            
+            menu.appendChild(menuItem);
+        }
+    });
+    
+    document.body.appendChild(menu);
+    
+    // Закрыть меню при клике вне
+    document.addEventListener('click', function closeMenu(e) {
+        if (!menu.contains(e.target)) {
+            menu.remove();
+            document.removeEventListener('click', closeMenu);
+        }
+    });
+}
+// Создание мультиселекта
+function createMultiselect(container, field, label, values) {
+    const btn = container.querySelector('.multiselect-btn');
+    const dropdown = container.querySelector('.multiselect-dropdown');
+    const optionsContainer = container.querySelector('.multiselect-options');
+    const searchInput = container.querySelector('.multiselect-search input');
+    const valueSpan = container.querySelector('.multiselect-value');
+    
+    let selectedValues = filterValues[field];
+    
+    // Сортируем значения по алфавиту (кроме 'all')
+const sortedValues = [...values]
+    .filter(v => v !== 'all')
+    .sort((a, b) => {
+        if (typeof a === 'number') return a - b;
+        return String(a).localeCompare(String(b), 'ru');
+    });
+    if (values.has('all')) sortedValues.unshift('all');
+    
+    function renderOptions(filterText = '') {
+        let html = '';
+        sortedValues.forEach(value => {
+            if (value === 'all') {
+                const isChecked = selectedValues.size === 0 || selectedValues.has('all');
+                html += `
+                    <div class="multiselect-option" data-value="all">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} id="${field}_all">
+                        <label for="${field}_all">Все ${label}</label>
+                    </div>
+                `;
+            } else {
+                const displayValue = value;
+                if (filterText && !String(displayValue).toLowerCase().includes(filterText.toLowerCase())) return;
+                const isChecked = selectedValues.has(value);
+                html += `
+                    <div class="multiselect-option" data-value="${String(value).replace(/"/g, '&quot;')}">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} id="${field}_${String(value).replace(/[^a-z0-9]/gi, '_')}">
+                        <label for="${field}_${String(value).replace(/[^a-z0-9]/gi, '_')}">${displayValue}</label>
+                    </div>
+                `;
+            }
+        });
+        optionsContainer.innerHTML = html;
+        
+        // Добавляем обработчики
+        optionsContainer.querySelectorAll('.multiselect-option').forEach(opt => {
+            const checkbox = opt.querySelector('input');
+            const value = opt.dataset.value;
+            
+            checkbox.addEventListener('change', (e) => {
+                e.stopPropagation();
+                if (value === 'all') {
+                    if (checkbox.checked) {
+                        selectedValues.clear();
+                        selectedValues.add('all');
+                        optionsContainer.querySelectorAll('.multiselect-option').forEach(o => {
+                            if (o.dataset.value !== 'all') {
+                                o.querySelector('input').checked = false;
+                            }
+                        });
+                    } else {
+                        selectedValues.delete('all');
+                    }
+                } else {
+                    if (checkbox.checked) {
+                        selectedValues.delete('all');
+                        if (optionsContainer.querySelector('.multiselect-option[data-value="all"] input')) {
+                            optionsContainer.querySelector('.multiselect-option[data-value="all"] input').checked = false;
+                        }
+                        selectedValues.add(value);
+                    } else {
+                        selectedValues.delete(value);
+                    }
+                }
+                updateButtonText();
+            });
+        });
+    }
+    
+    function updateButtonText() {
+        const count = selectedValues.size === 0 || (selectedValues.size === 1 && selectedValues.has('all')) ? 0 : selectedValues.size;
+        if (count === 0) {
+            valueSpan.innerHTML = `Все ${label}`;
+        } else {
+            valueSpan.innerHTML = `Выбрано: ${count}`;
+            const countSpan = document.createElement('span');
+            countSpan.className = 'selected-count';
+            countSpan.textContent = count;
+            valueSpan.appendChild(countSpan);
+        }
+    }
+    
+    // Обработчики
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('show');
+        if (dropdown.classList.contains('show') && searchInput) {
+            searchInput.focus();
+        }
+    });
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            renderOptions(e.target.value);
+        });
+    }
+    
+    // Закрытие при клике вне
+    document.addEventListener('click', function(e) {
+        if (!container.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+    
+    renderOptions();
+    updateButtonText();
+}
+
+// Обновленная функция populateFilters (возвращает Set вместо массива)
+function populateFilters(salesData) {
+    const fields = [
+        { field: 'year', label: 'Год', getValues: (data) => {
+            const years = new Set(['all']);
+            data.forEach(item => { if (item.year) years.add(item.year); });
+            return years; // Возвращаем Set, а не массив
+        }},
+        { field: 'month', label: 'Месяц', getValues: (data) => {
+            const months = new Set(['all']);
+            const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+            data.forEach(item => { if (item.month) months.add(monthNames[item.month - 1] || item.month); });
+            return months; // Возвращаем Set
+        }},
+        { field: 'dm', label: 'ДМ', getValues: (data) => {
+            const values = new Set(['all']);
+            data.forEach(item => { if (item.dm && item.dm !== "") values.add(item.dm); });
+            return values; // Возвращаем Set
+        }},
+        { field: 'rm', label: 'РМ', getValues: (data) => {
+            const values = new Set(['all']);
+            data.forEach(item => { if (item.rm && item.rm !== "") values.add(item.rm); });
+            return values; // Возвращаем Set
+        }},
+        { field: 'dt', label: 'ДТ', getValues: (data) => {
+            const values = new Set(['all']);
+            data.forEach(item => { if (item.dt && item.dt !== "") values.add(item.dt); });
+            return values; // Возвращаем Set
+        }},
+        { field: 'sv', label: 'СВ', getValues: (data) => {
+            const values = new Set(['all']);
+            data.forEach(item => { if (item.sv && item.sv !== "") values.add(item.sv); });
+            return values; // Возвращаем Set
+        }},
+        { field: 'tp', label: 'ТП', getValues: (data) => {
+            const values = new Set(['all']);
+            data.forEach(item => { if (item.tp && item.tp !== "") values.add(item.tp); });
+            return values; // Возвращаем Set
+        }},
+        { field: 'tm', label: 'ТМ', getValues: (data) => {
+            const values = new Set(['all']);
+            data.forEach(item => { if (item.tm && item.tm !== "") values.add(item.tm); });
+            return values; // Возвращаем Set
+        }},
+        { field: 'type', label: 'Тип', getValues: (data) => {
+            const values = new Set(['all']);
+            data.forEach(item => { if (item.type && item.type !== "") values.add(item.type); });
+            return values; // Возвращаем Set
+        }}
+    ];
+    
+    fields.forEach(({field, label, getValues}) => {
+        const container = document.querySelector(`.multiselect[data-field="${field}"]`);
+        if (container) {
+            const values = getValues(salesData);
+            createMultiselect(container, field, label, values);
+        }
+    });
+}
+// Функция для фильтрации данных (множественный выбор)
+function applyFilters(data) {
+    return data.filter(item => {
+        // Год
+        if (filterValues.year.size > 0 && !filterValues.year.has('all')) {
+            if (!filterValues.year.has(item.year)) return false;
+        }
+        // Месяц
+        if (filterValues.month.size > 0 && !filterValues.month.has('all')) {
+            const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+            const monthName = monthNames[item.month - 1] || item.month;
+            if (!filterValues.month.has(monthName)) return false;
+        }
+        // ДМ
+        if (filterValues.dm.size > 0 && !filterValues.dm.has('all')) {
+            if (!filterValues.dm.has(item.dm)) return false;
+        }
+        // РМ
+        if (filterValues.rm.size > 0 && !filterValues.rm.has('all')) {
+            if (!filterValues.rm.has(item.rm)) return false;
+        }
+        // ДТ
+        if (filterValues.dt.size > 0 && !filterValues.dt.has('all')) {
+            if (!filterValues.dt.has(item.dt)) return false;
+        }
+        // СВ
+        if (filterValues.sv.size > 0 && !filterValues.sv.has('all')) {
+            if (!filterValues.sv.has(item.sv)) return false;
+        }
+        // ТП
+        if (filterValues.tp.size > 0 && !filterValues.tp.has('all')) {
+            if (!filterValues.tp.has(item.tp)) return false;
+        }
+        // ТМ
+        if (filterValues.tm.size > 0 && !filterValues.tm.has('all')) {
+            if (!filterValues.tm.has(item.tm)) return false;
+        }
+        // Тип
+        if (filterValues.type.size > 0 && !filterValues.type.has('all')) {
+            if (!filterValues.type.has(item.type)) return false;
+        }
+        return true;
+    });
+}
+// Инициализация обработчиков фильтров
+function initFilters() {
+    const applyBtn = document.getElementById('applyFiltersBtn');
+    const resetBtn = document.getElementById('resetFiltersBtn');
+    
+    if (applyBtn) {
+        applyBtn.addEventListener('click', function() {
+            // Собираем значения фильтров (уже обновляются в реальном времени)
+            const filteredData = applyFilters(originalSalesData);
+            buildDashboard(filteredData);
+        });
+    }
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            // Сбрасываем все фильтры
+            filterValues = {
+                year: new Set(),
+                month: new Set(),
+                dm: new Set(),
+                rm: new Set(),
+                dt: new Set(),
+                sv: new Set(),
+                tp: new Set(),
+                tm: new Set(),
+                type: new Set()
+            };
+            // Перестраиваем дашборд с исходными данными
+            buildDashboard(originalSalesData);
+        });
+    }
+}
+
+function renderInventoryTable(inventoryImpact) {
+    const container = document.getElementById('inventoryTable');
+    if (!container) return;
+    
+    if (!inventoryImpact || inventoryImpact.length === 0) {
+        container.innerHTML = '<div class="table-status">⚠️ Нет данных об остатках. Убедитесь, что в файле есть лист "Остатки".</div>';
+        return;
+    }
+    
+    let html = `
+        <div class="table-container-scroll">
+            <table class="dynamic-table">
+                <thead>
+                    <tr>
+                        <th>ДТ</th>
+                        <th>Тип корма</th>
+                        <th>Торговая марка</th>
+                        <th>Нач. остаток, кг</th>
+                        <th>Продажи, кг</th>
+                        <th>Оборачиваемость, %</th>
+                        <th>Влияние на продажи</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    inventoryImpact.forEach(item => {
+        let impactClass = '';
+        let impactText = '';
+        const turnover = parseFloat(item.turnoverRate);
+        
+        if (turnover > 50) {
+            impactClass = 'color: #2A7A4B; font-weight: 600;';
+            impactText = '🔥 Высокий спрос';
+        } else if (turnover > 20) {
+            impactClass = 'color: #E8A317; font-weight: 600;';
+            impactText = '⚠️ Средний спрос';
+        } else {
+            impactClass = 'color: #C44B3C; font-weight: 600;';
+            impactText = '📉 Затоваривание';
+        }
+        
+        html += `
+            <tr>
+                <td>${item.dt.substring(0, 30)}${item.dt.length > 30 ? '...' : ''}</td>
+                <td>${item.type || '—'}</td>
+                <td><span class="product-badge">${item.brand}</span></td>
+                <td>${Math.round(item.startStock).toLocaleString()} кг</td>
+                <td>${Math.round(item.sales).toLocaleString()} кг</td>
+                <td>${item.turnoverRate}%</td>
+                <td style="${impactClass}">${impactText}</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <div class="insight-text" style="margin-top: 16px; padding: 12px; background: var(--gray-50); border-radius: 12px;">
+            💡 <strong>Аналитика:</strong> Высокая оборачиваемость (>50%) говорит о дефиците, низкая (<20%) — о затоваривании. 
+            Рекомендуется корректировать закупки под реальный спрос.
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    const statusElem = document.getElementById('inventoryStatus');
+    if (statusElem) statusElem.style.display = 'none';
+}
+function exportProcessedData() {
+    console.log('Экспорт пока не реализован');
+}
+function renderDynamicTable() {
+    const container = document.getElementById('dynamicTableContainer');
+    if (!container) return;
+    
+    if (tableData.length === 0) {
+        container.innerHTML = '<div class="table-status">⚠️ Нет данных для отображения</div>';
+        return;
+    }
+    
+    if (selectedMetrics.size === 0) {
+        container.innerHTML = '<div class="table-status">✅ Выберите хотя бы один показатель для отображения</div>';
+        return;
+    }
+    
+    const columnOrder = [];
+    const columnLabels = {
+        year: 'Год',
+        month: 'Месяц',
+        sales_kg: 'Продажи, кг',
+        avg_sales_per_tt: 'Ср. продажи/ТТ, кг',
+        akb_tt: 'АКБ, ТТ',
+        new_tt: 'Новые ТТ',
+        lost_tt: 'Потерянные ТТ',
+        avg_sku: 'Ср. кол-во СКЮ'
+    };
+    
+    const priorityOrder = ['year', 'month', 'sales_kg', 'akb_tt', 'new_tt', 'lost_tt', 'avg_sales_per_tt', 'avg_sku'];
+    priorityOrder.forEach(metric => {
+        if (selectedMetrics.has(metric)) {
+            columnOrder.push(metric);
+        }
+    });
+    
+    // Применяем все настройки к данным
+    let processedData = applyAllSettings(tableData);
+    
+    // Сортировка
+let sortedData = [...processedData];
+    if (currentSortColumn && columnOrder.includes(currentSortColumn)) {
+        sortedData.sort((a, b) => {
+            let valA = a[currentSortColumn];
+            let valB = b[currentSortColumn];
+            
+            if (currentSortColumn === 'month') {
+                valA = a.month;
+                valB = b.month;
+            }
+            
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                return currentSortDirection === 'asc' ? valA - valB : valB - valA;
+            }
+            
+            valA = String(valA || '');
+            valB = String(valB || '');
+            return currentSortDirection === 'asc' 
+                ? valA.localeCompare(valB, 'ru')
+                : valB.localeCompare(valA, 'ru');
+        });
+    }
+    
+    // Формируем HTML
+    let html = '<div class="table-container-scroll"><table class="dynamic-table" id="exportTable"><thead><tr>';
+    
+    columnOrder.forEach(metric => {
+        const settings = getMetricSettings(metric);
+        let indicator = '';
+        if (settings.mode === 'percent') indicator = '<span class="column-indicator">%</span>';
+        else if (settings.mode === 'absolute') indicator = '<span class="column-indicator">Δ</span>';
+        
+        const sortClass = currentSortColumn === metric 
+            ? `sortable-header ${currentSortDirection}` 
+            : 'sortable-header';
+        html += `<th class="${sortClass}" data-sort="${metric}" data-metric="${metric}">${columnLabels[metric]}${indicator}</th>`;
+    });
+    html += '<tr></thead><tbody>';
+    
+    sortedData.forEach(row => {
+        html += '<tr>';
+        columnOrder.forEach(metric => {
+            let value = row[metric];
+            const isCalculated = row[`${metric}_is_calculated`];
+            const mode = row[`${metric}_mode`];
+            
+            if (metric === 'month') {
+                const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+                value = monthNames[value - 1] || value;
+            } else if (metric === 'sales_kg' && !isCalculated) {
+                value = value.toLocaleString() + ' кг';
+            } else if (typeof value === 'number') {
+                if (isCalculated && mode === 'percent') {
+                    const color = value > 0 ? '#2A7A4B' : (value < 0 ? '#C44B3C' : '#666');
+                    const sign = value > 0 ? '+' : '';
+                    value = `<span style="color: ${color}; font-weight: 600;">${sign}${value.toFixed(1)}%</span>`;
+                } else if (isCalculated && mode === 'absolute') {
+                    const color = value > 0 ? '#2A7A4B' : (value < 0 ? '#C44B3C' : '#666');
+                    const sign = value > 0 ? '+' : '';
+                    value = `<span style="color: ${color}; font-weight: 600;">${sign}${value.toFixed(1)}</span>`;
+                } else {
+                    value = value.toFixed(2);
+                }
+            }
+            html += `<td>${value || 0}</td>`;
+        });
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+    
+    // Добавляем обработчики сортировки и контекстного меню
+    document.querySelectorAll('.sortable-header').forEach(th => {
+        th.addEventListener('click', function(e) {
+            const sortMetric = this.dataset.sort;
+            if (currentSortColumn === sortMetric) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = sortMetric;
+                currentSortDirection = 'asc';
+            }
+            renderDynamicTable();
+        });
+        
+        // Контекстное меню
+        th.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            const metric = this.dataset.metric;
+            if (!numericMetrics.includes(metric)) return;
+            
+            showContextMenu(e.clientX, e.clientY, metric);
+        });
+    });
+}
+
+// Функция для выгрузки в Excel
+function exportToExcel() {
+    if (tableData.length === 0) {
+        alert('Нет данных для выгрузки');
+        return;
+    }
+    
+    if (selectedMetrics.size === 0) {
+        alert('Выберите хотя бы один показатель для выгрузки');
+        return;
+    }
+    
+    // Определяем порядок колонок
+    const columnOrder = [];
+    const columnLabels = {
+        year: 'Год',
+        month: 'Месяц',
+        sales_kg: 'Продажи, кг',
+        akb_tt: 'АКБ, ТТ',
+        new_tt: 'Новые ТТ',
+        lost_tt: 'Потерянные ТТ',
+        avg_sales_per_tt: 'Ср. продажи/ТТ, кг',
+        avg_sku: 'Ср. кол-во СКЮ'
+    };
+    
+    const priorityOrder = ['year', 'month', 'sales_kg', 'akb_tt', 'new_tt', 'lost_tt', 'avg_sales_per_tt', 'avg_sku'];
+    priorityOrder.forEach(metric => {
+        if (selectedMetrics.has(metric)) {
+            columnOrder.push(metric);
+        }
+    });
+// Применяем настройки для экспорта
+let processedDataForExport = applyAllSettings(tableData);
+    
+    // Подготавливаем данные для Excel
+    const excelData = [];
+    
+    // Заголовки
+    const headers = columnOrder.map(metric => columnLabels[metric]);
+    excelData.push(headers);
+    
+    // === НАЧАЛО ЗАМЕНЫ - вставьте новый код здесь ===
+    // Сортируем данные для экспорта так же, как для отображения
+let sortedData = [...processedDataForExport];
+    if (currentSortColumn && columnOrder.includes(currentSortColumn)) {
+        sortedData.sort((a, b) => {
+            let valA = a[currentSortColumn];
+            let valB = b[currentSortColumn];
+            
+            if (currentSortColumn === 'month') {
+                valA = a.month;
+                valB = b.month;
+            }
+            
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                return currentSortDirection === 'asc' ? valA - valB : valB - valA;
+            }
+            
+            valA = String(valA || '');
+            valB = String(valB || '');
+            return currentSortDirection === 'asc' 
+                ? valA.localeCompare(valB, 'ru')
+                : valB.localeCompare(valA, 'ru');
+        });
+    }
+    
+    // Данные (используем sortedData вместо tableData)
+    sortedData.forEach(row => {
+        const rowData = [];
+        columnOrder.forEach(metric => {
+            let value = row[metric];
+            if (metric === 'month') {
+                const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+                value = monthNames[value - 1] || value;
+            } else if (metric === 'sales_kg') {
+                value = value;
+            } else if (typeof value === 'number') {
+                value = Math.round(value * 100) / 100;
+            }
+            rowData.push(value !== undefined && value !== null ? value : 0);
+        });
+        excelData.push(rowData);
+    });
+    // === КОНЕЦ ЗАМЕНЫ ===
+    
+    // Создаем и скачиваем Excel файл
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Аналитика_ТТ');
+    XLSX.writeFile(wb, `Аналитика_ТТ_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.xlsx`);
+}
+// Инициализация контролов таблицы
+function initTableControls() {
+    // Кнопки выбора показателей
+    document.querySelectorAll('.metric-option').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const metric = this.dataset.metric;
+            if (selectedMetrics.has(metric)) {
+                selectedMetrics.delete(metric);
+                this.classList.remove('selected');
+            } else {
+                selectedMetrics.add(metric);
+                this.classList.add('selected');
+            }
+            renderDynamicTable();
+        });
+        
+        if (selectedMetrics.has(btn.dataset.metric)) {
+            btn.classList.add('selected');
+        }
+    });
+    
+    // Глобальный переключатель режима
+    const modeSelector = document.getElementById('modeSelector');
+    const periodSelector = document.getElementById('periodSelector');
+    const resetBtn = document.getElementById('resetCustomBtn');
+    
+    if (modeSelector) {
+        modeSelector.addEventListener('click', function() {
+            if (globalMode === 'actual') {
+                globalMode = 'percent';
+                modeSelector.innerHTML = ' Проценты';
+                periodSelector.classList.remove('disabled');
+            } else if (globalMode === 'percent') {
+                globalMode = 'absolute';
+                modeSelector.innerHTML = ' Абсолютные';
+            } else {
+                globalMode = 'actual';
+                modeSelector.innerHTML = ' Значения';
+                periodSelector.classList.add('disabled');
+            }
+            renderDynamicTable();
+        });
+    }
+    
+    if (periodSelector) {
+        periodSelector.addEventListener('click', function() {
+            if (globalMode === 'actual') return;
+            
+            if (globalPeriod === 'yoy') {
+                globalPeriod = 'mom';
+                periodSelector.innerHTML = ' Мес к мес';
+            } else {
+                globalPeriod = 'yoy';
+                periodSelector.innerHTML = ' Год к году';
+            }
+            renderDynamicTable();
+        });
+        
+        if (globalMode === 'actual') {
+            periodSelector.classList.add('disabled');
+        }
+    }
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            columnCustomSettings.clear();
+            globalMode = 'actual';
+            globalPeriod = 'yoy';
+            modeSelector.innerHTML = ' Значения';
+            periodSelector.innerHTML = ' Год к году';
+            periodSelector.classList.add('disabled');
+            renderDynamicTable();
+        });
+    }
+    
+    // Экспорт
+    const exportBtn = document.getElementById('exportExcelBtn');
+    if (exportBtn) {
+        const newExportBtn = exportBtn.cloneNode(true);
+        exportBtn.parentNode.replaceChild(newExportBtn, exportBtn);
+        newExportBtn.addEventListener('click', exportToExcel);
+    }
+}
+// Обновление таблицы при изменении выбора метрик
+function updateTableWithSelectedMetrics() {
+    renderDynamicTable();
+}
+</script>
+</body>
+</html>
