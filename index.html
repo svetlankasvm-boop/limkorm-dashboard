@@ -2861,19 +2861,22 @@ async function loadExcelFromUrl(url) {
             console.error(`HTTP ${response.status} для ${url}`);
             throw new Error(`HTTP ${response.status}`);
         }
+        
+        const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+        
         // очистка памяти
         delete workbook.Sheets;
         delete workbook;
+        
         return rows;
-     catch (error) {
+    } catch (error) {
         console.error(`Ошибка загрузки: ${url}`, error);
         return null;
     }
 }
-
 // Парсинг продаж (индексы под ваш файл)
 function parseSalesDataFromRows(rows) {
     const salesData = [];
