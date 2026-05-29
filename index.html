@@ -2818,18 +2818,26 @@ async function loadDataFromUrls(urls, isFirstFileHasHeader = true) {
             if (rows && rows.length > 1) {
                 console.log(`Загружено ${rows.length} строк`);
                 if (isFirstFile && isFirstFileHasHeader) {
-                    combinedRows.push(...rows);
-                    isFirstFile = false;
-                } else {
-                    combinedRows.push(...rows.slice(1));
-                }
+
+    for (let i = 0; i < rows.length; i++) {
+        combinedRows.push(rows[i]);
+    }
+
+    isFirstFile = false;
+
+} else {
+
+    for (let i = 1; i < rows.length; i++) {
+        combinedRows.push(rows[i]);
+    }
+}
             }
         } catch (error) {
             console.error(`Ошибка загрузки ${url}:`, error);
         }
         
         // Пауза между запросами (важно для Google!)
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 5000));
     }
     
     return combinedRows;
@@ -2851,15 +2859,20 @@ async function loadExcelFromUrl(url) {
             console.error(`HTTP ${response.status} для ${url}`);
             throw new Error(`HTTP ${response.status}`);
         }
-        
-        const arrayBuffer = await response.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-        return rows;
-    } catch (error) {
-        console.error(`Ошибка загрузки: ${url}`, error);
-        return null;
+const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+const rows = XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    defval: ""
+});
+
+// очистка памяти
+delete workbook.Sheets;
+delete workbook;
+
+return rows;
     }
 }
 
