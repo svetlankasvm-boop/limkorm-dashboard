@@ -3767,11 +3767,11 @@ function createMultiselect(container, field, label, values) {
 // Обновленная функция populateFilters (возвращает Set вместо массива)
 function populateFilters(salesData) {
     const fields = [
-       { field: 'year', label: 'Год', getValues: (data) => {
-    const years = new Set(['all']);
-    data.forEach(item => { if (item.year) years.add(Number(item.year)); });
-    return years;
-}},
+        { field: 'year', label: 'Год', getValues: (data) => {
+            const years = new Set(['all']);
+            data.forEach(item => { if (item.year) years.add(item.year); });
+            return years;
+        }},
         { field: 'month', label: 'Месяц', getValues: (data) => {
             const months = new Set(['all']);
             const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
@@ -3837,8 +3837,8 @@ function applyFilters(data, skipField = null) {
     return data.filter(item => {
         // Год
         if (skipField !== 'year' && filterValues.year.size > 0 && !filterValues.year.has('all')) {
-    if (!filterValues.year.has(Number(item.year))) return false;
-}
+            if (!filterValues.year.has(item.year)) return false;
+        }
         // Месяц
         if (skipField !== 'month' && filterValues.month.size > 0 && !filterValues.month.has('all')) {
             const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
@@ -3888,9 +3888,9 @@ function getAvailableFilterValues(field, data) {
     const values = new Set(['all']);
     
     filteredData.forEach(item => {
-       if (field === 'year' && item.year) {
-    values.add(Number(item.year));
-} else if (field === 'month' && item.month) {
+        if (field === 'year' && item.year) {
+            values.add(item.year);
+        } else if (field === 'month' && item.month) {
             const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
             values.add(monthNames[item.month - 1] || item.month);
 } else if (field === 'channel' && item.channel && item.channel !== "") {
