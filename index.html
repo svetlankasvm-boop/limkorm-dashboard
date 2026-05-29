@@ -240,30 +240,37 @@
     white-space: nowrap;
 }
 
-        /* Insight Panel */
-        .insight-premium {
-            background: linear-gradient(112deg, #F0F8FA 0%, #FAFDFF 100%);
-            border-radius: 20px;
-            padding: 16px 24px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(0,192,222,0.3);
-            box-shadow: var(--shadow-sm);
-        }
+/* Аналитическое резюме с прокруткой */
+.insight-premium {
+    background: linear-gradient(112deg, #F0F8FA 0%, #FAFDFF 100%);
+    border-radius: 20px;
+    padding: 16px 24px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(0,192,222,0.3);
+    box-shadow: var(--shadow-sm);
+    max-height: 500px;           /* ← ОГРАНИЧЕНИЕ ВЫСОТЫ */
+    overflow-y: auto;            /* ← ВЕРТИКАЛЬНАЯ ПРОКРУТКА */
+    overflow-x: hidden;          /* ← ГОРИЗОНТАЛЬНУЮ УБИРАЕМ */
+}
 
-        .insight-title {
-            font-weight: 700;
-            color: var(--primary-dark);
-            margin-bottom: 12px;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+/* Стилизация скроллбара (опционально, красиво) */
+.insight-premium::-webkit-scrollbar {
+    width: 8px;
+}
 
-        .insight-text {
-            font-size: 0.9rem;
-            line-height: 1.5;
-            color: var(--gray-700);
-            font-weight: 500;
+.insight-premium::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: 10px;
+}
+
+.insight-premium::-webkit-scrollbar-thumb {
+    background: var(--primary-light);
+    border-radius: 10px;
+}
+
+.insight-premium::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+}
         }
 
         /* Chart Cards */
@@ -1921,11 +1928,11 @@ function buildAIPrompt(salesData, kpiData, topBrands, topCities, topChannels, gr
     allBrands.forEach(brand => {
         const val2025 = brand2025.get(brand) || 0;
         const val2026 = brand2026.get(brand) || 0;
-        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : 0;
+        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : (val2026 > 0 ? 100 : 0);
         brandData.push({ name: brand, kg2026: val2026, change: parseFloat(change) });
     });
     brandData.sort((a,b) => b.kg2026 - a.kg2026);
-    const top5Brands = brandData.slice(0,5);
+    const top8Brands = brandData.slice(0,8);
     
     // Данные по каналам с динамикой
     let channelData = [];
@@ -1943,23 +1950,33 @@ function buildAIPrompt(salesData, kpiData, topBrands, topCities, topChannels, gr
     allChannels.forEach(channel => {
         const val2025 = channel2025.get(channel) || 0;
         const val2026 = channel2026.get(channel) || 0;
-        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : 0;
+        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : (val2026 > 0 ? 100 : 0);
         channelData.push({ name: channel, kg2026: val2026, change: parseFloat(change) });
     });
     channelData.sort((a,b) => b.kg2026 - a.kg2026);
-    const topChannelsList = channelData.slice(0,5);
+    const topChannelsList = channelData.slice(0,6);
     
-    // Данные по дистрибьюторам (ДТ)
+    // Данные по дистрибьюторам (ДТ) с динамикой
     let dtData = [];
-    const dtMap = new Map();
+    const dt2025 = new Map();
+    const dt2026 = new Map();
+    
     salesData.forEach(sale => {
         if (sale.dt && sale.weightKg) {
-            dtMap.set(sale.dt, (dtMap.get(sale.dt) || 0) + sale.weightKg);
+            if (sale.year === 2025) dt2025.set(sale.dt, (dt2025.get(sale.dt) || 0) + sale.weightKg);
+            if (sale.year === 2026) dt2026.set(sale.dt, (dt2026.get(sale.dt) || 0) + sale.weightKg);
         }
     });
-    dtData = Array.from(dtMap.entries()).map(([name, kg]) => ({ name, kg, percent: (kg/totalSales2026*100) }));
-    dtData.sort((a,b) => b.kg - a.kg);
-    const top3DT = dtData.slice(0,3);
+    
+    const allDT = new Set([...dt2025.keys(), ...dt2026.keys()]);
+    allDT.forEach(dt => {
+        const val2025 = dt2025.get(dt) || 0;
+        const val2026 = dt2026.get(dt) || 0;
+        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : (val2026 > 0 ? 100 : 0);
+        dtData.push({ name: dt, kg2026: val2026, change: parseFloat(change) });
+    });
+    dtData.sort((a,b) => b.kg2026 - a.kg2026);
+    const top6DT = dtData.slice(0,6);
     
     // Данные по типам корма
     let typeData = [];
@@ -1972,69 +1989,116 @@ function buildAIPrompt(salesData, kpiData, topBrands, topCities, topChannels, gr
     typeData = Array.from(typeMap.entries()).map(([name, kg]) => ({ name, kg, percent: (kg/totalSales2026*100) }));
     typeData.sort((a,b) => b.kg - a.kg);
     
-    // Данные по менеджерам (ДМ, РМ, СВ, ТП)
-    const dmMap = new Map();
-    const rmMap = new Map();
-    const svMap = new Map();
-    const tpMap = new Map();
+    // Данные по менеджерам (ДМ, РМ) с динамикой
+    const dmData = [];
+    const dm2025 = new Map();
+    const dm2026 = new Map();
     
     salesData.forEach(sale => {
-        if (sale.dm && sale.weightKg) dmMap.set(sale.dm, (dmMap.get(sale.dm) || 0) + sale.weightKg);
-        if (sale.rm && sale.weightKg) rmMap.set(sale.rm, (rmMap.get(sale.rm) || 0) + sale.weightKg);
-        if (sale.sv && sale.weightKg) svMap.set(sale.sv, (svMap.get(sale.sv) || 0) + sale.weightKg);
-        if (sale.tp && sale.weightKg) tpMap.set(sale.tp, (tpMap.get(sale.tp) || 0) + sale.weightKg);
+        if (sale.dm && sale.weightKg) {
+            if (sale.year === 2025) dm2025.set(sale.dm, (dm2025.get(sale.dm) || 0) + sale.weightKg);
+            if (sale.year === 2026) dm2026.set(sale.dm, (dm2026.get(sale.dm) || 0) + sale.weightKg);
+        }
     });
     
-    const getTopManager = (map, label) => {
-        const sorted = Array.from(map.entries()).sort((a,b) => b[1] - a[1]).slice(0, 2);
-        return sorted.map(([name, kg]) => `${label}:${name} ${(kg/totalSales2026*100).toFixed(1)}%`).join(' ');
-    };
+    const allDM = new Set([...dm2025.keys(), ...dm2026.keys()]);
+    allDM.forEach(dm => {
+        const val2025 = dm2025.get(dm) || 0;
+        const val2026 = dm2026.get(dm) || 0;
+        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : (val2026 > 0 ? 100 : 0);
+        dmData.push({ name: dm, kg2026: val2026, change: parseFloat(change) });
+    });
+    dmData.sort((a,b) => b.kg2026 - a.kg2026);
+    const top5DM = dmData.slice(0,5);
     
-    const managerInfo = [getTopManager(dmMap, 'ДМ'), getTopManager(rmMap, 'РМ'), getTopManager(svMap, 'СВ'), getTopManager(tpMap, 'ТП')].filter(s => s).join(' | ');
+    const rmData = [];
+    const rm2025 = new Map();
+    const rm2026 = new Map();
     
-    // Формируем компактный блок данных
+    salesData.forEach(sale => {
+        if (sale.rm && sale.weightKg) {
+            if (sale.year === 2025) rm2025.set(sale.rm, (rm2025.get(sale.rm) || 0) + sale.weightKg);
+            if (sale.year === 2026) rm2026.set(sale.rm, (rm2026.get(sale.rm) || 0) + sale.weightKg);
+        }
+    });
+    
+    const allRM = new Set([...rm2025.keys(), ...rm2026.keys()]);
+    allRM.forEach(rm => {
+        const val2025 = rm2025.get(rm) || 0;
+        const val2026 = rm2026.get(rm) || 0;
+        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : (val2026 > 0 ? 100 : 0);
+        rmData.push({ name: rm, kg2026: val2026, change: parseFloat(change) });
+    });
+    rmData.sort((a,b) => b.kg2026 - a.kg2026);
+    const top5RM = rmData.slice(0,5);
+    
+    // Формируем блок данных
     const dataBlock = `
+ОБЩАЯ ДИНАМИКА:
 Продажи: ${Math.round(totalSales2025).toLocaleString()} кг -> ${Math.round(totalSales2026).toLocaleString()} кг (${salesChange}%)
 
-Показатели 2026 (изм к 2025):
-АКБ: ${kpiData.akb2026.toLocaleString()} ТТ (${kpiData.akbChangePct > 0 ? '+' : ''}${kpiData.akbChangePct.toFixed(1)}%)
-Продажи/ТТ: ${kpiData.avgSalesPerTT2026.toFixed(1)} кг (${kpiData.avgSalesChangePct > 0 ? '+' : ''}${kpiData.avgSalesChangePct.toFixed(1)}%)
-SKU/ТТ: ${kpiData.avgSku2026.toFixed(1)} (${kpiData.avgSkuChangePct > 0 ? '+' : ''}${kpiData.avgSkuChangePct.toFixed(1)}%)
-Промо: ${kpiData.promoShare2026.toFixed(1)}% (${kpiData.promoShareChange > 0 ? '+' : ''}${kpiData.promoShareChange.toFixed(1)} п.п.)
+ПОКАЗАТЕЛИ 2026 (изменение к 2025):
+- АКБ: ${kpiData.akb2026.toLocaleString()} ТТ (${kpiData.akbChangePct > 0 ? '+' : ''}${kpiData.akbChangePct.toFixed(1)}%)
+- Продажи на ТТ: ${kpiData.avgSalesPerTT2026.toFixed(1)} кг (${kpiData.avgSalesChangePct > 0 ? '+' : ''}${kpiData.avgSalesChangePct.toFixed(1)}%)
+- SKU на ТТ: ${kpiData.avgSku2026.toFixed(1)} (${kpiData.avgSkuChangePct > 0 ? '+' : ''}${kpiData.avgSkuChangePct.toFixed(1)}%)
+- Доля промо: ${kpiData.promoShare2026.toFixed(1)}% (${kpiData.promoShareChange > 0 ? '+' : ''}${kpiData.promoShareChange.toFixed(1)} п.п.)
 
-Бренды (доля/изм):
-${top5Brands.map(b => `${b.name}: ${(b.kg2026/totalSales2026*100).toFixed(1)}% (${b.change > 0 ? '+' : ''}${b.change.toFixed(1)}%)`).join('\n')}
+БРЕНДЫ (доля / динамика):
+${top8Brands.map(b => `${b.name}: ${(b.kg2026/totalSales2026*100).toFixed(1)}% (${b.change > 0 ? '+' : ''}${b.change.toFixed(1)}%)`).join('\n')}
 
-Каналы (доля/изм):
+КАНАЛЫ (доля / динамика):
 ${topChannelsList.map(ch => `${ch.name}: ${(ch.kg2026/totalSales2026*100).toFixed(1)}% (${ch.change > 0 ? '+' : ''}${ch.change.toFixed(1)}%)`).join('\n')}
 
-ДТ: ${top3DT.map(d => `${d.name} ${d.percent.toFixed(1)}%`).join(' | ')}
-Типы: ${typeData.map(t => `${t.name} ${t.percent.toFixed(1)}%`).join(' | ')}
-Менеджеры: ${managerInfo}`;
+ДИСТРИБЬЮТОРЫ (доля / динамика):
+${top6DT.map(dt => `${dt.name}: ${(dt.kg2026/totalSales2026*100).toFixed(1)}% (${dt.change > 0 ? '+' : ''}${dt.change.toFixed(1)}%)`).join('\n')}
 
-    return `Ты жесткий аналитик компании. Никаких иконок, эмодзи, лишних слов, приветствий и пояснений. Только сухие цифры и причины.
+ТИПЫ КОРМА (доля):
+${typeData.map(t => `${t.name}: ${t.percent.toFixed(1)}%`).join('\n')}
+
+МЕНЕДЖЕРЫ ДМ (доля / динамика):
+${top5DM.map(dm => `${dm.name}: ${(dm.kg2026/totalSales2026*100).toFixed(1)}% (${dm.change > 0 ? '+' : ''}${dm.change.toFixed(1)}%)`).join('\n')}
+
+МЕНЕДЖЕРЫ РМ (доля / динамика):
+${top5RM.map(rm => `${rm.name}: ${(rm.kg2026/totalSales2026*100).toFixed(1)}% (${rm.change > 0 ? '+' : ''}${rm.change.toFixed(1)}%)`).join('\n')}`;
+
+    return `Ты — экспертный аналитик по продажам кормов для животных. Твоя задача — найти скрытые закономерности в данных. НЕ ПРИДУМЫВАЙ ТО, ЧЕГО НЕТ В ДАННЫХ.
+
+Если нет данных о промо — не пиши про промо. Если нет данных о маркетинге — не пиши про маркетинг.
+Только факты и связи, которые можно вывести из цифр.
 
 Данные:
 ${dataBlock}
 
 Ответь строго в формате:
 
-Динамика: [рост/падение] на X%. За счет: [АКБ/продажи на ТТ/SKU/промо]
+1. ГЛАВНЫЙ ВЫВОД: (Одна фраза — что происходит с продажами, рост или падение, за счёт чего)
 
-Драйверы (кто и почему):
-+ [Название] — [конкретная причина роста, с указанием кто обеспечил]
-- [Название] — [конкретная причина падения, с указанием что не сработало]
-(бренды, каналы, ДТ, типы, менеджеры)
+2. ГДЕ РОСТ:
+   - ДТ: (название, +X%)
+   - РМ: (имя, +X%)
+   - Бренды: (название, +X%)
+   - Каналы: (название, +X%)
+   - Типы корма: (название, +X%)
+   (указывай только то, где есть明显ый рост)
 
-Остатки: [дефицит/затоваривание/нет данных]
-(если есть проблемы — указать, какие продажи могли быть выше)
+3. ГДЕ ПАДЕНИЕ:
+   - ДТ: (название, -X%)
+   - РМ: (имя, -X%)
+   - Бренды: (название, -X%)
+   - Каналы: (название, -X%)
+   - Типы корма: (название, -X%)
+   (указывай только то, где есть明显ое падение)
 
-Вывод: [Молодец, ключевые драйверы: ... / Внимание, проблемные зоны: ...]
-> Действие 1 (кому и что сделать)
-> Действие 2
-> Действие 3
+4. СВЯЗИ И ЗАКОНОМЕРНОСТИ:
+   (только то, что видно из данных. Например: в ДТ X упали продажи бренда Y, и в этом же ДТ этот бренд отсутствует на остатках)
+   (Если таких связей нет — напиши "явных связей не обнаружено")
 
-Без воды. Без "также".`;
+5. ЧТО ДЕЛАТЬ:
+   > Действие 1 (кому и на какой территории)
+   > Действие 2
+   > Действие 3
+
+Без воды. Без предположений. Только факты и цифры.`;
 }
 
 // Функция для обновления блока с ИИ-анализом (через прокси на Replit)
