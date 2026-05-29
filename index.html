@@ -2862,7 +2862,10 @@ async function loadExcelFromUrl(url) {
             throw new Error(`HTTP ${response.status}`);
         }
         
+        // ↓↓↓ ЭТА СТРОКА БЫЛА ПРОПУЩЕНА ↓↓↓
         const arrayBuffer = await response.arrayBuffer();
+        // ↑↑↑ ЭТА СТРОКА БЫЛА ПРОПУЩЕНА ↑↑↑
+        
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
