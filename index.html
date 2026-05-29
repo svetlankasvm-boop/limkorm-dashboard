@@ -1130,6 +1130,7 @@ const numericMetrics = ['sales_kg', 'akb_tt', 'new_tt', 'lost_tt', 'avg_sales_pe
 let filterValues = {
     year: new Set(),
     month: new Set(),
+    channel: new Set(),
     dm: new Set(),
     rm: new Set(),
     dt: new Set(),
@@ -2574,6 +2575,17 @@ const fullHtml = `
                 <div class="multiselect-options"></div>
             </div>
         </div>
+
+<div class="multiselect" data-field="channel" data-label="Канал" style="flex: 1; min-width: 50px;">
+    <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
+        <span class="multiselect-value">Канал</span>
+        <span class="multiselect-arrow">▼</span>
+    </div>
+    <div class="multiselect-dropdown">
+        <div class="multiselect-search"><input type="text" placeholder="Поиск..."></div>
+        <div class="multiselect-options"></div>
+    </div>
+</div>
         
         <div class="multiselect" data-field="dm" data-label="ДМ" style="flex: 1; min-width: 50px;">
             <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
@@ -3755,17 +3767,22 @@ function createMultiselect(container, field, label, values) {
 // Обновленная функция populateFilters (возвращает Set вместо массива)
 function populateFilters(salesData) {
     const fields = [
-        { field: 'year', label: 'Год', getValues: (data) => {
-            const years = new Set(['all']);
-            data.forEach(item => { if (item.year) years.add(item.year); });
-            return years;
-        }},
+       { field: 'year', label: 'Год', getValues: (data) => {
+    const years = new Set(['all']);
+    data.forEach(item => { if (item.year) years.add(Number(item.year)); });
+    return years;
+}},
         { field: 'month', label: 'Месяц', getValues: (data) => {
             const months = new Set(['all']);
             const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
             data.forEach(item => { if (item.month) months.add(monthNames[item.month - 1] || item.month); });
             return months;
         }},
+{ field: 'channel', label: 'Канал', getValues: (data) => {
+    const values = new Set(['all']);
+    data.forEach(item => { if (item.channel && item.channel !== "") values.add(item.channel); });
+    return values;
+}},
         { field: 'dm', label: 'ДМ', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.dm && item.dm !== "") values.add(item.dm); });
@@ -3820,14 +3837,18 @@ function applyFilters(data, skipField = null) {
     return data.filter(item => {
         // Год
         if (skipField !== 'year' && filterValues.year.size > 0 && !filterValues.year.has('all')) {
-            if (!filterValues.year.has(item.year)) return false;
-        }
+    if (!filterValues.year.has(Number(item.year))) return false;
+}
         // Месяц
         if (skipField !== 'month' && filterValues.month.size > 0 && !filterValues.month.has('all')) {
             const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
             const monthName = monthNames[item.month - 1] || item.month;
             if (!filterValues.month.has(monthName)) return false;
         }
+// Канал
+if (skipField !== 'channel' && filterValues.channel.size > 0 && !filterValues.channel.has('all')) {
+    if (!filterValues.channel.has(item.channel)) return false;
+}
         // ДМ
         if (skipField !== 'dm' && filterValues.dm.size > 0 && !filterValues.dm.has('all')) {
             if (!filterValues.dm.has(item.dm)) return false;
@@ -3867,11 +3888,13 @@ function getAvailableFilterValues(field, data) {
     const values = new Set(['all']);
     
     filteredData.forEach(item => {
-        if (field === 'year' && item.year) {
-            values.add(item.year);
-        } else if (field === 'month' && item.month) {
+       if (field === 'year' && item.year) {
+    values.add(Number(item.year));
+} else if (field === 'month' && item.month) {
             const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
             values.add(monthNames[item.month - 1] || item.month);
+} else if (field === 'channel' && item.channel && item.channel !== "") {
+    values.add(item.channel);
         } else if (field === 'dm' && item.dm && item.dm !== "") {
             values.add(item.dm);
         } else if (field === 'rm' && item.rm && item.rm !== "") {
@@ -3894,7 +3917,7 @@ function getAvailableFilterValues(field, data) {
 
 // Функция для обновления всех фильтров каскадно
 function updateAllFiltersCascade(changedField = null) {
-    const fields = ['year', 'month', 'dm', 'rm', 'dt', 'sv', 'tp', 'tm', 'type'];
+const fields = ['year', 'month', 'channel', 'dm', 'rm', 'dt', 'sv', 'tp', 'tm', 'type'];
     
     fields.forEach(field => {
         const container = document.querySelector(`.multiselect[data-field="${field}"]`);
@@ -4043,17 +4066,18 @@ function initFilters() {
     if (resetBtn) {
         resetBtn.addEventListener('click', function() {
             // Сбрасываем все фильтры
-            filterValues = {
-                year: new Set(),
-                month: new Set(),
-                dm: new Set(),
-                rm: new Set(),
-                dt: new Set(),
-                sv: new Set(),
-                tp: new Set(),
-                tm: new Set(),
-                type: new Set()
-            };
+           filterValues = {
+    year: new Set(),
+    month: new Set(),
+    channel: new Set(),
+    dm: new Set(),
+    rm: new Set(),
+    dt: new Set(),
+    sv: new Set(),
+    tp: new Set(),
+    tm: new Set(),
+    type: new Set()
+};
             // Обновляем все фильтры каскадно
             updateAllFiltersCascade();
             // Перестраиваем дашборд с исходными данными
