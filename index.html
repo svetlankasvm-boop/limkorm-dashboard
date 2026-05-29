@@ -1,4 +1,3 @@
-Скорректируем блок фильтров. Посмотри на код, летит по некоторым разрезам фильтра (например, год). Можно ли сделать, что Если выбираешь ДМ, то будут видны только его РМ, если РМ то только его ДТ, то есть, чтобы данные в остальных фильтрах показывались с учетом выбранных. А также добавить канал продаж в фильтры (13).
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -1144,8 +1143,7 @@ let filterValues = {
     sv: new Set(),
     tp: new Set(),
     tm: new Set(),
-    type: new Set(),
-    channel: new Set()   // ← ДОБАВИТЬ
+    type: new Set()
 };
 let originalSalesData = [];
 // Функция загрузки Excel
@@ -2660,16 +2658,7 @@ const fullHtml = `
                 <div class="multiselect-options"></div>
             </div>
         </div>
-        <div class="multiselect" data-field="channel" data-label="Канал" style="flex: 1; min-width: 50px;">
-    <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
-        <span class="multiselect-value">Канал</span>
-        <span class="multiselect-arrow">▼</span>
-    </div>
-    <div class="multiselect-dropdown">
-        <div class="multiselect-search"><input type="text" placeholder="Поиск..."></div>
-        <div class="multiselect-options"></div>
-    </div>
-</div>
+        
         <button class="apply-filters-btn" id="applyFiltersBtn" style="padding: 4px 12px; font-size: 0.7rem; flex-shrink: 0;">Прим</button>
         <button class="reset-filters-btn" id="resetFiltersBtn" style="padding: 4px 12px; font-size: 0.7rem; flex-shrink: 0;">Сбр</button>
     </div>
@@ -3665,12 +3654,13 @@ function createMultiselect(container, field, label, values) {
     
     let selectedValues = filterValues[field];
     
-    const sortedValues = [...values]
-        .filter(v => v !== 'all')
-        .sort((a, b) => {
-            if (typeof a === 'number') return a - b;
-            return String(a).localeCompare(String(b), 'ru');
-        });
+    // Сортируем значения по алфавиту (кроме 'all')
+const sortedValues = [...values]
+    .filter(v => v !== 'all')
+    .sort((a, b) => {
+        if (typeof a === 'number') return a - b;
+        return String(a).localeCompare(String(b), 'ru');
+    });
     if (values.has('all')) sortedValues.unshift('all');
     
     function renderOptions(filterText = '') {
@@ -3698,6 +3688,7 @@ function createMultiselect(container, field, label, values) {
         });
         optionsContainer.innerHTML = html;
         
+        // Добавляем обработчики
         optionsContainer.querySelectorAll('.multiselect-option').forEach(opt => {
             const checkbox = opt.querySelector('input');
             const value = opt.dataset.value;
@@ -3719,21 +3710,15 @@ function createMultiselect(container, field, label, values) {
                 } else {
                     if (checkbox.checked) {
                         selectedValues.delete('all');
-                        const allCheckbox = optionsContainer.querySelector('.multiselect-option[data-value="all"] input');
-                        if (allCheckbox) allCheckbox.checked = false;
+                        if (optionsContainer.querySelector('.multiselect-option[data-value="all"] input')) {
+                            optionsContainer.querySelector('.multiselect-option[data-value="all"] input').checked = false;
+                        }
                         selectedValues.add(value);
                     } else {
                         selectedValues.delete(value);
                     }
                 }
                 updateButtonText();
-                
-                // После изменения фильтра обновляем зависимые фильтры (РМ, ДТ)
-                if (field === 'dm' || field === 'rm') {
-                    setTimeout(() => {
-                        populateFilters(originalSalesData);
-                    }, 100);
-                }
             });
         });
     }
@@ -3751,6 +3736,7 @@ function createMultiselect(container, field, label, values) {
         }
     }
     
+    // Обработчики
     btn.addEventListener('click', (e) => {
         e.stopPropagation();
         dropdown.classList.toggle('show');
@@ -3765,6 +3751,7 @@ function createMultiselect(container, field, label, values) {
         });
     }
     
+    // Закрытие при клике вне
     document.addEventListener('click', function(e) {
         if (!container.contains(e.target)) {
             dropdown.classList.remove('show');
@@ -3773,127 +3760,63 @@ function createMultiselect(container, field, label, values) {
     
     renderOptions();
     updateButtonText();
-}   
-// Обновленная функция populateFilters (каскадная)
+}
+
+// Обновленная функция populateFilters (возвращает Set вместо массива)
 function populateFilters(salesData) {
-    // Получаем текущие выбранные значения
-    const selectedDM = filterValues.dm.has('all') || filterValues.dm.size === 0 ? null : Array.from(filterValues.dm);
-    const selectedRM = filterValues.rm.has('all') || filterValues.rm.size === 0 ? null : Array.from(filterValues.rm);
-    const selectedDT = filterValues.dt.has('all') || filterValues.dt.size === 0 ? null : Array.from(filterValues.dt);
-    
-    // Функция для фильтрации данных по иерархии
-    const getFilteredData = () => {
-        let filtered = salesData;
-        
-        // Фильтр по ДМ
-        if (selectedDM && selectedDM.length > 0) {
-            filtered = filtered.filter(item => selectedDM.includes(item.dm));
-        }
-        // Фильтр по РМ
-        if (selectedRM && selectedRM.length > 0) {
-            filtered = filtered.filter(item => selectedRM.includes(item.rm));
-        }
-        // Фильтр по ДТ
-        if (selectedDT && selectedDT.length > 0) {
-            filtered = filtered.filter(item => selectedDT.includes(item.dt));
-        }
-        
-        return filtered;
-    };
-    
-    const filteredData = getFilteredData();
-    
     const fields = [
         { field: 'year', label: 'Год', getValues: (data) => {
             const years = new Set(['all']);
             data.forEach(item => { if (item.year) years.add(item.year); });
-            return years;
+            return years; // Возвращаем Set, а не массив
         }},
         { field: 'month', label: 'Месяц', getValues: (data) => {
             const months = new Set(['all']);
             const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
             data.forEach(item => { if (item.month) months.add(monthNames[item.month - 1] || item.month); });
-            return months;
+            return months; // Возвращаем Set
         }},
         { field: 'dm', label: 'ДМ', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.dm && item.dm !== "") values.add(item.dm); });
-            return values;
+            return values; // Возвращаем Set
         }},
         { field: 'rm', label: 'РМ', getValues: (data) => {
             const values = new Set(['all']);
-            // РМ зависят от выбранного ДМ
-            let sourceData = salesData;
-            if (selectedDM && selectedDM.length > 0) {
-                sourceData = salesData.filter(item => selectedDM.includes(item.dm));
-            }
-            sourceData.forEach(item => { if (item.rm && item.rm !== "") values.add(item.rm); });
-            return values;
+            data.forEach(item => { if (item.rm && item.rm !== "") values.add(item.rm); });
+            return values; // Возвращаем Set
         }},
         { field: 'dt', label: 'ДТ', getValues: (data) => {
             const values = new Set(['all']);
-            // ДТ зависят от выбранных ДМ и РМ
-            let sourceData = salesData;
-            if (selectedDM && selectedDM.length > 0) {
-                sourceData = sourceData.filter(item => selectedDM.includes(item.dm));
-            }
-            if (selectedRM && selectedRM.length > 0) {
-                sourceData = sourceData.filter(item => selectedRM.includes(item.rm));
-            }
-            sourceData.forEach(item => { if (item.dt && item.dt !== "") values.add(item.dt); });
-            return values;
-        }},
-        { field: 'channel', label: 'Канал', getValues: (data) => {
-            const values = new Set(['all']);
-            data.forEach(item => { if (item.channel && item.channel !== "") values.add(item.channel); });
-            return values;
+            data.forEach(item => { if (item.dt && item.dt !== "") values.add(item.dt); });
+            return values; // Возвращаем Set
         }},
         { field: 'sv', label: 'СВ', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.sv && item.sv !== "") values.add(item.sv); });
-            return values;
+            return values; // Возвращаем Set
         }},
         { field: 'tp', label: 'ТП', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.tp && item.tp !== "") values.add(item.tp); });
-            return values;
+            return values; // Возвращаем Set
         }},
         { field: 'tm', label: 'ТМ', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.tm && item.tm !== "") values.add(item.tm); });
-            return values;
+            return values; // Возвращаем Set
         }},
         { field: 'type', label: 'Тип', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.type && item.type !== "") values.add(item.type); });
-            return values;
+            return values; // Возвращаем Set
         }}
     ];
     
     fields.forEach(({field, label, getValues}) => {
         const container = document.querySelector(`.multiselect[data-field="${field}"]`);
         if (container) {
-            let values;
-            if (field === 'rm') {
-                // Для РМ используем данные с учетом выбранного ДМ
-                let sourceData = salesData;
-                if (selectedDM && selectedDM.length > 0) {
-                    sourceData = salesData.filter(item => selectedDM.includes(item.dm));
-                }
-                values = getValues(sourceData);
-            } else if (field === 'dt') {
-                // Для ДТ учитываем ДМ и РМ
-                let sourceData = salesData;
-                if (selectedDM && selectedDM.length > 0) {
-                    sourceData = sourceData.filter(item => selectedDM.includes(item.dm));
-                }
-                if (selectedRM && selectedRM.length > 0) {
-                    sourceData = sourceData.filter(item => selectedRM.includes(item.rm));
-                }
-                values = getValues(sourceData);
-            } else {
-                values = getValues(filteredData);
-            }
+            const values = getValues(salesData);
             createMultiselect(container, field, label, values);
         }
     });
@@ -3939,10 +3862,6 @@ function applyFilters(data) {
         if (filterValues.type.size > 0 && !filterValues.type.has('all')) {
             if (!filterValues.type.has(item.type)) return false;
         }
-// Канал
-if (filterValues.channel.size > 0 && !filterValues.channel.has('all')) {
-    if (!filterValues.channel.has(item.channel)) return false;
-}
         return true;
     });
 }
@@ -3962,18 +3881,17 @@ function initFilters() {
     if (resetBtn) {
         resetBtn.addEventListener('click', function() {
             // Сбрасываем все фильтры
-           filterValues = {
-    year: new Set(),
-    month: new Set(),
-    dm: new Set(),
-    rm: new Set(),
-    dt: new Set(),
-    sv: new Set(),
-    tp: new Set(),
-    tm: new Set(),
-    type: new Set(),
-    channel: new Set()   // ← ДОБАВИТЬ
-};
+            filterValues = {
+                year: new Set(),
+                month: new Set(),
+                dm: new Set(),
+                rm: new Set(),
+                dt: new Set(),
+                sv: new Set(),
+                tp: new Set(),
+                tm: new Set(),
+                type: new Set()
+            };
             // Перестраиваем дашборд с исходными данными
             buildDashboard(originalSalesData);
         });
