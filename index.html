@@ -2804,48 +2804,54 @@ const DATA_URLS = {
     ]
 };
 
-// УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАГРУЗКИ (РАБОТАЕТ С МАССИВОМ)
+// УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАГРУЗКИ (ПОСЛЕДОВАТЕЛЬНАЯ, НО БЫСТРАЯ)
 async function loadDataFromUrls(urls, isFirstFileHasHeader = true) {
     const urlList = Array.isArray(urls) ? urls : [urls];
-    
-    // Загружаем ВСЕ файлы параллельно
-    const allResults = await Promise.all(
-        urlList.map(async (url, index) => {
-            if (!url) return null;
-            console.log(`Загрузка: ${url}`);
-            const rows = await loadExcelFromUrl(url);
-            if (rows && rows.length > 1) {
-                console.log(`Загружено ${rows.length} строк из ${url.split('/').pop()}`);
-                return rows;
-            }
-            return null;
-        })
-    );
-    
-    // Объединяем результаты
     let combinedRows = [];
     let isFirstFile = true;
     
-    for (const rows of allResults) {
-        if (rows && rows.length > 1) {
-            if (isFirstFile && isFirstFileHasHeader) {
-                combinedRows.push(...rows);
-                isFirstFile = false;
+    for (let i = 0; i < urlList.length; i++) {
+        const url = urlList[i];
+        if (!url) continue;
+        
+        console.log(`Загрузка файла ${i+1}/${urlList.length}: ${url.substring(0, 80)}...`);
+        
+        try {
+            const rows = await loadExcelFromUrl(url);
+            if (rows && rows.length > 1) {
+                console.log(`✅ Загружено ${rows.length} строк`);
+                if (isFirstFile && isFirstFileHasHeader) {
+                    // Первый файл: добавляем все строки (включая заголовки)
+                    for (let j = 0; j < rows.length; j++) {
+                        combinedRows.push(rows[j]);
+                    }
+                    isFirstFile = false;
+                } else {
+                    // Остальные файлы: добавляем без первой строки (заголовки)
+                    for (let j = 1; j < rows.length; j++) {
+                        combinedRows.push(rows[j]);
+                    }
+                }
             } else {
-                combinedRows.push(...rows.slice(1));
+                console.warn(`⚠️ Файл ${url} не содержит данных`);
             }
+        } catch (error) {
+            console.error(`❌ Ошибка загрузки ${url}:`, error);
+        }
+        
+        // Небольшая пауза между запросами (только 1 секунда)
+        if (i < urlList.length - 1) {
+            await new Promise(r => setTimeout(r, 1000));
         }
     }
     
+    console.log(`📊 Всего загружено строк: ${combinedRows.length}`);
     return combinedRows;
 }
 
-// Функция загрузки Excel с улучшенными заголовками
+// Функция загрузки Excel 
 async function loadExcelFromUrl(url) {
     try {
-        // Добавляем задержку перед запросом
-        await new Promise(r => setTimeout(r, 500));
-        
         const response = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -2853,7 +2859,6 @@ async function loadExcelFromUrl(url) {
         });
         
         if (!response.ok) {
-            console.error(`HTTP ${response.status} для ${url}`);
             throw new Error(`HTTP ${response.status}`);
         }
         
@@ -2862,7 +2867,7 @@ async function loadExcelFromUrl(url) {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
         
-        // очистка памяти
+        // Очистка памяти
         delete workbook.Sheets;
         delete workbook;
         
