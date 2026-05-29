@@ -2868,7 +2868,7 @@ async function loadExcelFromUrl(url) {
         delete workbook.Sheets;
         delete workbook;
         return rows;
-    } catch (error) {
+     catch (error) {
         console.error(`Ошибка загрузки: ${url}`, error);
         return null;
     }
