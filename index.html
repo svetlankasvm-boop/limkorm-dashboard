@@ -1,3 +1,4 @@
+Скорректируем блок фильтров. Посмотри на код, летит по некоторым разрезам фильтра (например, год). Можно ли сделать, что Если выбираешь ДМ, то будут видны только его РМ, если РМ то только его ДТ, то есть, чтобы данные в остальных фильтрах показывались с учетом выбранных. А также добавить канал продаж в фильтры (13).
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -240,30 +241,37 @@
     white-space: nowrap;
 }
 
-        /* Insight Panel */
-        .insight-premium {
-            background: linear-gradient(112deg, #F0F8FA 0%, #FAFDFF 100%);
-            border-radius: 20px;
-            padding: 16px 24px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(0,192,222,0.3);
-            box-shadow: var(--shadow-sm);
-        }
+/* Аналитическое резюме с прокруткой */
+.insight-premium {
+    background: linear-gradient(112deg, #F0F8FA 0%, #FAFDFF 100%);
+    border-radius: 20px;
+    padding: 16px 24px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(0,192,222,0.3);
+    box-shadow: var(--shadow-sm);
+    max-height: 500px;           /* ← ОГРАНИЧЕНИЕ ВЫСОТЫ */
+    overflow-y: auto;            /* ← ВЕРТИКАЛЬНАЯ ПРОКРУТКА */
+    overflow-x: hidden;          /* ← ГОРИЗОНТАЛЬНУЮ УБИРАЕМ */
+}
 
-        .insight-title {
-            font-weight: 700;
-            color: var(--primary-dark);
-            margin-bottom: 12px;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+/* Стилизация скроллбара (опционально, красиво) */
+.insight-premium::-webkit-scrollbar {
+    width: 8px;
+}
 
-        .insight-text {
-            font-size: 0.9rem;
-            line-height: 1.5;
-            color: var(--gray-700);
-            font-weight: 500;
+.insight-premium::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: 10px;
+}
+
+.insight-premium::-webkit-scrollbar-thumb {
+    background: var(--primary-light);
+    border-radius: 10px;
+}
+
+.insight-premium::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+}
         }
 
         /* Chart Cards */
@@ -1136,7 +1144,8 @@ let filterValues = {
     sv: new Set(),
     tp: new Set(),
     tm: new Set(),
-    type: new Set()
+    type: new Set(),
+    channel: new Set()   // ← ДОБАВИТЬ
 };
 let originalSalesData = [];
 // Функция загрузки Excel
@@ -1882,19 +1891,282 @@ const sortedMonths = Array.from(monthlyMap.keys()).sort((a, b) => {
         const trendIcon = growthRate > 2 ? '' : (growthRate < -2 ? '' : '');
         const trendColor = growthRate > 2 ? '#2A7A4B' : (growthRate < -2 ? '#C44B3C' : '#E8A317');
         
-        const insightHtml = `
+const insightHtml = `
+    <div class="insight-title">
+        <span>Аналитическое резюме</span>
+    </div>
+    <div class="insight-text" id="aiAnalysisContent">
+        ⏳ Загрузка ИИ-анализа...
+    </div>
+`;
+   // ===== ИИ АНАЛИЗ ЧЕРЕЗ GigaChat =====
+
+// Функция для формирования промпта на основе данных дашборда
+function buildAIPrompt(salesData, kpiData, topBrands, topCities, topChannels, growthRate) {
+    // Собираем статистику за 2025 и 2026 годы
+    let totalSales2025 = 0;
+    let totalSales2026 = 0;
+    
+    salesData.forEach(sale => {
+        if (sale.year === 2025 && sale.weightKg) totalSales2025 += sale.weightKg;
+        if (sale.year === 2026 && sale.weightKg) totalSales2026 += sale.weightKg;
+    });
+    
+    const salesChange = totalSales2025 > 0 ? ((totalSales2026 - totalSales2025) / totalSales2025 * 100).toFixed(1) : 0;
+    
+    // Данные по брендам с динамикой
+    let brandData = [];
+    const brand2025 = new Map();
+    const brand2026 = new Map();
+    
+    salesData.forEach(sale => {
+        if (sale.brand && sale.weightKg) {
+            if (sale.year === 2025) brand2025.set(sale.brand, (brand2025.get(sale.brand) || 0) + sale.weightKg);
+            if (sale.year === 2026) brand2026.set(sale.brand, (brand2026.get(sale.brand) || 0) + sale.weightKg);
+        }
+    });
+    
+    const allBrands = new Set([...brand2025.keys(), ...brand2026.keys()]);
+    allBrands.forEach(brand => {
+        const val2025 = brand2025.get(brand) || 0;
+        const val2026 = brand2026.get(brand) || 0;
+        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : (val2026 > 0 ? 100 : 0);
+        brandData.push({ name: brand, kg2026: val2026, change: parseFloat(change) });
+    });
+    brandData.sort((a,b) => b.kg2026 - a.kg2026);
+    const top8Brands = brandData.slice(0,8);
+    
+    // Данные по каналам с динамикой
+    let channelData = [];
+    const channel2025 = new Map();
+    const channel2026 = new Map();
+    
+    salesData.forEach(sale => {
+        if (sale.channel && sale.weightKg) {
+            if (sale.year === 2025) channel2025.set(sale.channel, (channel2025.get(sale.channel) || 0) + sale.weightKg);
+            if (sale.year === 2026) channel2026.set(sale.channel, (channel2026.get(sale.channel) || 0) + sale.weightKg);
+        }
+    });
+    
+    const allChannels = new Set([...channel2025.keys(), ...channel2026.keys()]);
+    allChannels.forEach(channel => {
+        const val2025 = channel2025.get(channel) || 0;
+        const val2026 = channel2026.get(channel) || 0;
+        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : (val2026 > 0 ? 100 : 0);
+        channelData.push({ name: channel, kg2026: val2026, change: parseFloat(change) });
+    });
+    channelData.sort((a,b) => b.kg2026 - a.kg2026);
+    const topChannelsList = channelData.slice(0,6);
+    
+    // Данные по дистрибьюторам (ДТ) с динамикой
+    let dtData = [];
+    const dt2025 = new Map();
+    const dt2026 = new Map();
+    
+    salesData.forEach(sale => {
+        if (sale.dt && sale.weightKg) {
+            if (sale.year === 2025) dt2025.set(sale.dt, (dt2025.get(sale.dt) || 0) + sale.weightKg);
+            if (sale.year === 2026) dt2026.set(sale.dt, (dt2026.get(sale.dt) || 0) + sale.weightKg);
+        }
+    });
+    
+    const allDT = new Set([...dt2025.keys(), ...dt2026.keys()]);
+    allDT.forEach(dt => {
+        const val2025 = dt2025.get(dt) || 0;
+        const val2026 = dt2026.get(dt) || 0;
+        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : (val2026 > 0 ? 100 : 0);
+        dtData.push({ name: dt, kg2026: val2026, change: parseFloat(change) });
+    });
+    dtData.sort((a,b) => b.kg2026 - a.kg2026);
+    const top6DT = dtData.slice(0,6);
+    
+    // Данные по типам корма
+    let typeData = [];
+    const typeMap = new Map();
+    salesData.forEach(sale => {
+        if (sale.type && sale.weightKg) {
+            typeMap.set(sale.type, (typeMap.get(sale.type) || 0) + sale.weightKg);
+        }
+    });
+    typeData = Array.from(typeMap.entries()).map(([name, kg]) => ({ name, kg, percent: (kg/totalSales2026*100) }));
+    typeData.sort((a,b) => b.kg - a.kg);
+    
+    // Данные по менеджерам (ДМ, РМ) с динамикой
+    const dmData = [];
+    const dm2025 = new Map();
+    const dm2026 = new Map();
+    
+    salesData.forEach(sale => {
+        if (sale.dm && sale.weightKg) {
+            if (sale.year === 2025) dm2025.set(sale.dm, (dm2025.get(sale.dm) || 0) + sale.weightKg);
+            if (sale.year === 2026) dm2026.set(sale.dm, (dm2026.get(sale.dm) || 0) + sale.weightKg);
+        }
+    });
+    
+    const allDM = new Set([...dm2025.keys(), ...dm2026.keys()]);
+    allDM.forEach(dm => {
+        const val2025 = dm2025.get(dm) || 0;
+        const val2026 = dm2026.get(dm) || 0;
+        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : (val2026 > 0 ? 100 : 0);
+        dmData.push({ name: dm, kg2026: val2026, change: parseFloat(change) });
+    });
+    dmData.sort((a,b) => b.kg2026 - a.kg2026);
+    const top5DM = dmData.slice(0,5);
+    
+    const rmData = [];
+    const rm2025 = new Map();
+    const rm2026 = new Map();
+    
+    salesData.forEach(sale => {
+        if (sale.rm && sale.weightKg) {
+            if (sale.year === 2025) rm2025.set(sale.rm, (rm2025.get(sale.rm) || 0) + sale.weightKg);
+            if (sale.year === 2026) rm2026.set(sale.rm, (rm2026.get(sale.rm) || 0) + sale.weightKg);
+        }
+    });
+    
+    const allRM = new Set([...rm2025.keys(), ...rm2026.keys()]);
+    allRM.forEach(rm => {
+        const val2025 = rm2025.get(rm) || 0;
+        const val2026 = rm2026.get(rm) || 0;
+        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : (val2026 > 0 ? 100 : 0);
+        rmData.push({ name: rm, kg2026: val2026, change: parseFloat(change) });
+    });
+    rmData.sort((a,b) => b.kg2026 - a.kg2026);
+    const top5RM = rmData.slice(0,5);
+    
+    // Формируем блок данных
+    const dataBlock = `
+ОБЩАЯ ДИНАМИКА:
+Продажи: ${Math.round(totalSales2025).toLocaleString()} кг -> ${Math.round(totalSales2026).toLocaleString()} кг (${salesChange}%)
+
+ПОКАЗАТЕЛИ 2026 (изменение к 2025):
+- АКБ: ${kpiData.akb2026.toLocaleString()} ТТ (${kpiData.akbChangePct > 0 ? '+' : ''}${kpiData.akbChangePct.toFixed(1)}%)
+- Продажи на ТТ: ${kpiData.avgSalesPerTT2026.toFixed(1)} кг (${kpiData.avgSalesChangePct > 0 ? '+' : ''}${kpiData.avgSalesChangePct.toFixed(1)}%)
+- SKU на ТТ: ${kpiData.avgSku2026.toFixed(1)} (${kpiData.avgSkuChangePct > 0 ? '+' : ''}${kpiData.avgSkuChangePct.toFixed(1)}%)
+- Доля промо: ${kpiData.promoShare2026.toFixed(1)}% (${kpiData.promoShareChange > 0 ? '+' : ''}${kpiData.promoShareChange.toFixed(1)} п.п.)
+
+БРЕНДЫ (доля / динамика):
+${top8Brands.map(b => `${b.name}: ${(b.kg2026/totalSales2026*100).toFixed(1)}% (${b.change > 0 ? '+' : ''}${b.change.toFixed(1)}%)`).join('\n')}
+
+КАНАЛЫ (доля / динамика):
+${topChannelsList.map(ch => `${ch.name}: ${(ch.kg2026/totalSales2026*100).toFixed(1)}% (${ch.change > 0 ? '+' : ''}${ch.change.toFixed(1)}%)`).join('\n')}
+
+ДИСТРИБЬЮТОРЫ (доля / динамика):
+${top6DT.map(dt => `${dt.name}: ${(dt.kg2026/totalSales2026*100).toFixed(1)}% (${dt.change > 0 ? '+' : ''}${dt.change.toFixed(1)}%)`).join('\n')}
+
+ТИПЫ КОРМА (доля):
+${typeData.map(t => `${t.name}: ${t.percent.toFixed(1)}%`).join('\n')}
+
+МЕНЕДЖЕРЫ ДМ (доля / динамика):
+${top5DM.map(dm => `${dm.name}: ${(dm.kg2026/totalSales2026*100).toFixed(1)}% (${dm.change > 0 ? '+' : ''}${dm.change.toFixed(1)}%)`).join('\n')}
+
+МЕНЕДЖЕРЫ РМ (доля / динамика):
+${top5RM.map(rm => `${rm.name}: ${(rm.kg2026/totalSales2026*100).toFixed(1)}% (${rm.change > 0 ? '+' : ''}${rm.change.toFixed(1)}%)`).join('\n')}`;
+
+    return `Ты — экспертный аналитик по продажам кормов для животных. Твоя задача — найти скрытые закономерности в данных. НЕ ПРИДУМЫВАЙ ТО, ЧЕГО НЕТ В ДАННЫХ.
+
+Если нет данных о промо — не пиши про промо. Если нет данных о маркетинге — не пиши про маркетинг.
+Только факты и связи, которые можно вывести из цифр.
+
+Данные:
+${dataBlock}
+
+Ответь строго в формате:
+
+1. ГЛАВНЫЙ ВЫВОД: (Одна фраза — что происходит с продажами, рост или падение, за счёт чего)
+
+2. ГДЕ РОСТ:
+   - ДТ: (название, +X%)
+   - РМ: (имя, +X%)
+   - Бренды: (название, +X%)
+   - Каналы: (название, +X%)
+   - Типы корма: (название, +X%)
+   (указывай только то, где есть明显ый рост)
+
+3. ГДЕ ПАДЕНИЕ:
+   - ДТ: (название, -X%)
+   - РМ: (имя, -X%)
+   - Бренды: (название, -X%)
+   - Каналы: (название, -X%)
+   - Типы корма: (название, -X%)
+   (указывай только то, где есть明显ое падение)
+
+4. СВЯЗИ И ЗАКОНОМЕРНОСТИ:
+   (только то, что видно из данных. Например: в ДТ X упали продажи бренда Y, и в этом же ДТ этот бренд отсутствует на остатках)
+   (Если таких связей нет — напиши "явных связей не обнаружено")
+
+5. ЧТО ДЕЛАТЬ:
+   > Действие 1 (кому и на какой территории)
+   > Действие 2
+   > Действие 3
+
+Без воды. Без предположений. Только факты и цифры.`;
+}
+
+// Функция для обновления блока с ИИ-анализом (через прокси на Replit)
+async function updateAIAnalysis(salesData, kpiData, topBrands, topCities, topChannels, growthRate) {
+    const insightDiv = document.querySelector('.insight-premium');
+    if (!insightDiv) return;
+
+    // 👇👇👇 ВАША ССЫЛКА НА API (УЖЕ ГОТОВА) 👇👇👇
+    const PROXY_URL = 'https://cfda45ac-f52a-4f06-b665-041833c5c2e4-00-2yd2wj8asepvd.janeway.replit.dev';
+
+    // Показываем, что ИИ думает
+    insightDiv.innerHTML = `
+        <div class="insight-title">
+            <span>Аналитическое резюме</span>
+        </div>
+        <div class="insight-text" style="display: flex; align-items: center; gap: 12px;">
+            <div class="spinner" style="width: 20px; height: 20px; border: 2px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+            <span>GigaChat анализирует данные продаж...</span>
+        </div>
+    `;
+    
+    try {
+        const prompt = buildAIPrompt(salesData, kpiData, topBrands, topCities, topChannels, growthRate);
+        
+        const response = await fetch(`${PROXY_URL}/api/analyze`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ prompt })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        const analysis = data.analysis;
+
+        if (analysis) {
+            insightDiv.innerHTML = `
+                <div class="insight-title">
+                    <span>Аналитическое резюме</span>
+                </div>
+                <div class="insight-text">
+                    ${analysis.replace(/\n/g, '<br>')}
+                </div>
+            `;
+        } else {
+            throw new Error('Пустой ответ от GigaChat');
+        }
+        
+    } catch (error) {
+        console.error('Ошибка ИИ-анализа:', error);
+        insightDiv.innerHTML = `
             <div class="insight-title">
-                <span>АНАЛИТИЧЕСКОЕ РЕЗЮМЕ</span>
+                <span>Аналитическое резюме</span>
             </div>
             <div class="insight-text">
-                ${trendIcon} <strong style="color:${trendColor}">${growthRate > 0 ? '+' : ''}${growthRate.toFixed(1)}% динамика</strong> за последний период. 
-                Бренд <strong>${mainBrand}</strong> генерирует ${(topBrands[0]?.revenue/totalRevenue*100).toFixed(1)}% выручки. 
-                Географический фокус — <strong>${mainCity}</strong> (${(topCities[0]?.revenue/totalRevenue*100).toFixed(1)}% от продаж). 
-                Канал «${mainChannel}» занимает ${(topChannels[0]?.kg/totalWeight*100).toFixed(1)}% в натуральном объёме. 
-                ${growthRate > 0 ? '🚀 Драйверы роста: крупная фасовка (10 кг), активность бридеров и экспансия в регионы.' : '🎯 Рекомендуется усилить промо в сегменте бридеров и развивать корма супер-премиум.'}
+                ⚠️ Не удалось получить анализ от GigaChat.<br>
+                <small>Ошибка: ${error.message}</small>
             </div>
         `;
-        
+    }
+}
 // Функция для расчета отклонений для KPI карточек (включая промо)
 function calculateKPIDeviations(salesData) {
     // Агрегируем данные по годам
@@ -2388,7 +2660,16 @@ const fullHtml = `
                 <div class="multiselect-options"></div>
             </div>
         </div>
-        
+        <div class="multiselect" data-field="channel" data-label="Канал" style="flex: 1; min-width: 50px;">
+    <div class="multiselect-btn" style="padding: 4px 8px; font-size: 0.7rem;">
+        <span class="multiselect-value">Канал</span>
+        <span class="multiselect-arrow">▼</span>
+    </div>
+    <div class="multiselect-dropdown">
+        <div class="multiselect-search"><input type="text" placeholder="Поиск..."></div>
+        <div class="multiselect-options"></div>
+    </div>
+</div>
         <button class="apply-filters-btn" id="applyFiltersBtn" style="padding: 4px 12px; font-size: 0.7rem; flex-shrink: 0;">Прим</button>
         <button class="reset-filters-btn" id="resetFiltersBtn" style="padding: 4px 12px; font-size: 0.7rem; flex-shrink: 0;">Сбр</button>
     </div>
@@ -2475,6 +2756,13 @@ const fullHtml = `
 </div>
 `;
         document.getElementById('dashboardContent').innerHTML = fullHtml;
+// Запускаем ИИ-анализ после построения дашборда
+setTimeout(async () => {
+    const topBrands = Array.from(brandMap.entries()).map(([b,rev]) => ({brand: b || "Другое", revenue: rev})).sort((a,b)=>b.revenue - a.revenue).slice(0,5);
+    const topCities = Array.from(cityMap.entries()).map(([c,rev]) => ({city: c, revenue: rev})).sort((a,b)=>b.revenue - a.revenue).slice(0,6);
+    const topChannels = Array.from(channelKgMap.entries()).map(([ch,kg]) => ({channel: ch, kg})).sort((a,b)=>b.kg - a.kg).slice(0,5);
+    await updateAIAnalysis(salesData, kpiData, topBrands, topCities, topChannels, growthRate);
+}, 1000);
     // Заполняем фильтры данными
     populateFilters(originalSalesData);
     // Инициализируем обработчики фильтров
@@ -3377,13 +3665,12 @@ function createMultiselect(container, field, label, values) {
     
     let selectedValues = filterValues[field];
     
-    // Сортируем значения по алфавиту (кроме 'all')
-const sortedValues = [...values]
-    .filter(v => v !== 'all')
-    .sort((a, b) => {
-        if (typeof a === 'number') return a - b;
-        return String(a).localeCompare(String(b), 'ru');
-    });
+    const sortedValues = [...values]
+        .filter(v => v !== 'all')
+        .sort((a, b) => {
+            if (typeof a === 'number') return a - b;
+            return String(a).localeCompare(String(b), 'ru');
+        });
     if (values.has('all')) sortedValues.unshift('all');
     
     function renderOptions(filterText = '') {
@@ -3411,7 +3698,6 @@ const sortedValues = [...values]
         });
         optionsContainer.innerHTML = html;
         
-        // Добавляем обработчики
         optionsContainer.querySelectorAll('.multiselect-option').forEach(opt => {
             const checkbox = opt.querySelector('input');
             const value = opt.dataset.value;
@@ -3433,15 +3719,21 @@ const sortedValues = [...values]
                 } else {
                     if (checkbox.checked) {
                         selectedValues.delete('all');
-                        if (optionsContainer.querySelector('.multiselect-option[data-value="all"] input')) {
-                            optionsContainer.querySelector('.multiselect-option[data-value="all"] input').checked = false;
-                        }
+                        const allCheckbox = optionsContainer.querySelector('.multiselect-option[data-value="all"] input');
+                        if (allCheckbox) allCheckbox.checked = false;
                         selectedValues.add(value);
                     } else {
                         selectedValues.delete(value);
                     }
                 }
                 updateButtonText();
+                
+                // После изменения фильтра обновляем зависимые фильтры (РМ, ДТ)
+                if (field === 'dm' || field === 'rm') {
+                    setTimeout(() => {
+                        populateFilters(originalSalesData);
+                    }, 100);
+                }
             });
         });
     }
@@ -3459,7 +3751,6 @@ const sortedValues = [...values]
         }
     }
     
-    // Обработчики
     btn.addEventListener('click', (e) => {
         e.stopPropagation();
         dropdown.classList.toggle('show');
@@ -3474,7 +3765,6 @@ const sortedValues = [...values]
         });
     }
     
-    // Закрытие при клике вне
     document.addEventListener('click', function(e) {
         if (!container.contains(e.target)) {
             dropdown.classList.remove('show');
@@ -3483,63 +3773,127 @@ const sortedValues = [...values]
     
     renderOptions();
     updateButtonText();
-}
-
-// Обновленная функция populateFilters (возвращает Set вместо массива)
+}   
+// Обновленная функция populateFilters (каскадная)
 function populateFilters(salesData) {
+    // Получаем текущие выбранные значения
+    const selectedDM = filterValues.dm.has('all') || filterValues.dm.size === 0 ? null : Array.from(filterValues.dm);
+    const selectedRM = filterValues.rm.has('all') || filterValues.rm.size === 0 ? null : Array.from(filterValues.rm);
+    const selectedDT = filterValues.dt.has('all') || filterValues.dt.size === 0 ? null : Array.from(filterValues.dt);
+    
+    // Функция для фильтрации данных по иерархии
+    const getFilteredData = () => {
+        let filtered = salesData;
+        
+        // Фильтр по ДМ
+        if (selectedDM && selectedDM.length > 0) {
+            filtered = filtered.filter(item => selectedDM.includes(item.dm));
+        }
+        // Фильтр по РМ
+        if (selectedRM && selectedRM.length > 0) {
+            filtered = filtered.filter(item => selectedRM.includes(item.rm));
+        }
+        // Фильтр по ДТ
+        if (selectedDT && selectedDT.length > 0) {
+            filtered = filtered.filter(item => selectedDT.includes(item.dt));
+        }
+        
+        return filtered;
+    };
+    
+    const filteredData = getFilteredData();
+    
     const fields = [
         { field: 'year', label: 'Год', getValues: (data) => {
             const years = new Set(['all']);
             data.forEach(item => { if (item.year) years.add(item.year); });
-            return years; // Возвращаем Set, а не массив
+            return years;
         }},
         { field: 'month', label: 'Месяц', getValues: (data) => {
             const months = new Set(['all']);
             const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
             data.forEach(item => { if (item.month) months.add(monthNames[item.month - 1] || item.month); });
-            return months; // Возвращаем Set
+            return months;
         }},
         { field: 'dm', label: 'ДМ', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.dm && item.dm !== "") values.add(item.dm); });
-            return values; // Возвращаем Set
+            return values;
         }},
         { field: 'rm', label: 'РМ', getValues: (data) => {
             const values = new Set(['all']);
-            data.forEach(item => { if (item.rm && item.rm !== "") values.add(item.rm); });
-            return values; // Возвращаем Set
+            // РМ зависят от выбранного ДМ
+            let sourceData = salesData;
+            if (selectedDM && selectedDM.length > 0) {
+                sourceData = salesData.filter(item => selectedDM.includes(item.dm));
+            }
+            sourceData.forEach(item => { if (item.rm && item.rm !== "") values.add(item.rm); });
+            return values;
         }},
         { field: 'dt', label: 'ДТ', getValues: (data) => {
             const values = new Set(['all']);
-            data.forEach(item => { if (item.dt && item.dt !== "") values.add(item.dt); });
-            return values; // Возвращаем Set
+            // ДТ зависят от выбранных ДМ и РМ
+            let sourceData = salesData;
+            if (selectedDM && selectedDM.length > 0) {
+                sourceData = sourceData.filter(item => selectedDM.includes(item.dm));
+            }
+            if (selectedRM && selectedRM.length > 0) {
+                sourceData = sourceData.filter(item => selectedRM.includes(item.rm));
+            }
+            sourceData.forEach(item => { if (item.dt && item.dt !== "") values.add(item.dt); });
+            return values;
+        }},
+        { field: 'channel', label: 'Канал', getValues: (data) => {
+            const values = new Set(['all']);
+            data.forEach(item => { if (item.channel && item.channel !== "") values.add(item.channel); });
+            return values;
         }},
         { field: 'sv', label: 'СВ', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.sv && item.sv !== "") values.add(item.sv); });
-            return values; // Возвращаем Set
+            return values;
         }},
         { field: 'tp', label: 'ТП', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.tp && item.tp !== "") values.add(item.tp); });
-            return values; // Возвращаем Set
+            return values;
         }},
         { field: 'tm', label: 'ТМ', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.tm && item.tm !== "") values.add(item.tm); });
-            return values; // Возвращаем Set
+            return values;
         }},
         { field: 'type', label: 'Тип', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.type && item.type !== "") values.add(item.type); });
-            return values; // Возвращаем Set
+            return values;
         }}
     ];
     
     fields.forEach(({field, label, getValues}) => {
         const container = document.querySelector(`.multiselect[data-field="${field}"]`);
         if (container) {
-            const values = getValues(salesData);
+            let values;
+            if (field === 'rm') {
+                // Для РМ используем данные с учетом выбранного ДМ
+                let sourceData = salesData;
+                if (selectedDM && selectedDM.length > 0) {
+                    sourceData = salesData.filter(item => selectedDM.includes(item.dm));
+                }
+                values = getValues(sourceData);
+            } else if (field === 'dt') {
+                // Для ДТ учитываем ДМ и РМ
+                let sourceData = salesData;
+                if (selectedDM && selectedDM.length > 0) {
+                    sourceData = sourceData.filter(item => selectedDM.includes(item.dm));
+                }
+                if (selectedRM && selectedRM.length > 0) {
+                    sourceData = sourceData.filter(item => selectedRM.includes(item.rm));
+                }
+                values = getValues(sourceData);
+            } else {
+                values = getValues(filteredData);
+            }
             createMultiselect(container, field, label, values);
         }
     });
@@ -3585,6 +3939,10 @@ function applyFilters(data) {
         if (filterValues.type.size > 0 && !filterValues.type.has('all')) {
             if (!filterValues.type.has(item.type)) return false;
         }
+// Канал
+if (filterValues.channel.size > 0 && !filterValues.channel.has('all')) {
+    if (!filterValues.channel.has(item.channel)) return false;
+}
         return true;
     });
 }
@@ -3604,17 +3962,18 @@ function initFilters() {
     if (resetBtn) {
         resetBtn.addEventListener('click', function() {
             // Сбрасываем все фильтры
-            filterValues = {
-                year: new Set(),
-                month: new Set(),
-                dm: new Set(),
-                rm: new Set(),
-                dt: new Set(),
-                sv: new Set(),
-                tp: new Set(),
-                tm: new Set(),
-                type: new Set()
-            };
+           filterValues = {
+    year: new Set(),
+    month: new Set(),
+    dm: new Set(),
+    rm: new Set(),
+    dt: new Set(),
+    sv: new Set(),
+    tp: new Set(),
+    tm: new Set(),
+    type: new Set(),
+    channel: new Set()   // ← ДОБАВИТЬ
+};
             // Перестраиваем дашборд с исходными данными
             buildDashboard(originalSalesData);
         });
