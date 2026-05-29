@@ -2790,38 +2790,76 @@ if (inventoryDataParam && inventoryDataParam.length > 0) {
 }
 // ========== ЗАГРУЗКА ДАННЫХ ИЗ GOOGLE SHEETS (ПРЯМЫЕ ССЫЛКИ) ==========
 
-// Прямые ссылки на скачивание ваших файлов (Excel формат)
+// Прямые ссылки на скачивание ваших файлов (Excel формат) - ВЕРНЫЕ ССЫЛКИ
 const DATA_URLS = {
-
     sales: [
-
         'https://docs.google.com/spreadsheets/d/1-ni1vhxJaIcoh9e6MR926MvWGL0agODR/export?format=xlsx',
-
         'https://docs.google.com/spreadsheets/d/14L4vqxjodC9R1ciSTKEi7RRrf21l8MXl/export?format=xlsx',
-
         'https://docs.google.com/spreadsheets/d/1rrCXRwP78sfDzT5FkpxjeGa7WaS5Ja5g/export?format=xlsx',
-
         'https://docs.google.com/spreadsheets/d/1HNsvRRTdJhrfnUyh9cFP7cKWHNpKeXrq/export?format=xlsx',
-
         'https://docs.google.com/spreadsheets/d/10WBGHk73V_XXf8A0Vmn92IrjkJMI7eXe/export?format=xlsx',
-
         'https://docs.google.com/spreadsheets/d/1MIvcdrw0dKQ8F53HLMolN2udwAPLAtEw/export?format=xlsx'
-
     ],
-
-    inventory: 'https://docs.google.com/spreadsheets/d/YYYYY/export?format=xlsx',
-
-    promo: 'https://docs.google.com/spreadsheets/d/ZZZZZ/export?format=xlsx'
+    inventory: [
+        'https://docs.google.com/spreadsheets/d/1lpkFaRW1fwetPunfTUsZUeD6afoLG3QE/export?format=xlsx'
+    ],
+    promo: [
+        'https://docs.google.com/spreadsheets/d/1vH74RwrmJ9vbaHgabGnxpMp97PrxzTA3/export?format=xlsx'
+    ]
 };
 
-// Загрузка Excel файла по ссылке
+// УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАГРУЗКИ (РАБОТАЕТ С МАССИВОМ)
+async function loadDataFromUrls(urls, isFirstFileHasHeader = true) {
+    const urlList = Array.isArray(urls) ? urls : [urls];
+    let combinedRows = [];
+    let isFirstFile = true;
+    
+    for (const url of urlList) {
+        if (!url) continue;
+        
+        console.log(`Загрузка: ${url}`);
+        
+        try {
+            const rows = await loadExcelFromUrl(url);
+            if (rows && rows.length > 1) {
+                console.log(`Загружено ${rows.length} строк`);
+                if (isFirstFile && isFirstFileHasHeader) {
+                    combinedRows.push(...rows);
+                    isFirstFile = false;
+                } else {
+                    combinedRows.push(...rows.slice(1));
+                }
+            }
+        } catch (error) {
+            console.error(`Ошибка загрузки ${url}:`, error);
+        }
+        
+        // Пауза между запросами (важно для Google!)
+        await new Promise(r => setTimeout(r, 2000));
+    }
+    
+    return combinedRows;
+}
+
+// Функция загрузки Excel с улучшенными заголовками
 async function loadExcelFromUrl(url) {
     try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        // Добавляем задержку перед запросом
+        await new Promise(r => setTimeout(r, 500));
+        
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+        
+        if (!response.ok) {
+            console.error(`HTTP ${response.status} для ${url}`);
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        // Берём первый лист (можно настроить)
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
         return rows;
@@ -2928,64 +2966,28 @@ async function loadAllData() {
     dashboardDiv.innerHTML = '<div class="loader">📁 Загрузка данных...</div>';
     
     try {
-// 1. Загружаем продажи
-dashboardDiv.innerHTML = '<div class="loader">📊 Загрузка данных продаж...</div>';
-
-let combinedSalesRows = [];
-let isFirstFile = true;
-
-for (const fileUrl of DATA_URLS.sales) {
-
-    console.log('Загрузка файла продаж:', fileUrl);
-
-    try {
-
-        const salesRows = await loadExcelFromUrl(fileUrl);
-
+        // 1. Загружаем продажи из нескольких файлов
+        dashboardDiv.innerHTML = '<div class="loader">📊 Загрузка данных продаж...</div>';
+        const salesRows = await loadDataFromUrls(DATA_URLS.sales, true);
+        let allSalesData = [];
         if (salesRows && salesRows.length > 1) {
-
-            console.log('Загружено строк:', salesRows.length);
-
-            if (isFirstFile) {
-
-                // первый файл вместе с заголовками
-                combinedSalesRows.push(...salesRows);
-
-                isFirstFile = false;
-
-            } else {
-
-                // остальные файлы без первой строки
-                combinedSalesRows.push(...salesRows.slice(1));
-            }
+            allSalesData = parseSalesDataFromRows(salesRows);
+            console.log(`✅ Загружено ${allSalesData.length} записей продаж`);
+        } else {
+            console.warn('salesRows пуст или недостаточно данных');
         }
-
-    } catch (error) {
-
-        console.error('Ошибка загрузки файла:', fileUrl, error);
-    }
-
-    // пауза между запросами
-    await new Promise(r => setTimeout(r, 3000));
-}
-
-let allSalesData = [];
-
-if (combinedSalesRows.length > 1) {
-
-    allSalesData = parseSalesDataFromRows(combinedSalesRows);
-}
         
         // 2. Загружаем остатки
         dashboardDiv.innerHTML = '<div class="loader">📦 Загрузка данных об остатках...</div>';
-        const inventoryRows = await loadExcelFromUrl(DATA_URLS.inventory);
+        const inventoryRows = await loadDataFromUrls(DATA_URLS.inventory, true);
         let allInventoryData = [];
         if (inventoryRows && inventoryRows.length > 1) {
             allInventoryData = parseInventoryDataFromRows(inventoryRows);
+            console.log(`✅ Загружено ${allInventoryData.length} записей остатков`);
         }
         
-        if (allSalesData.length === 0) {
-            dashboardDiv.innerHTML = '<div class="loader">❌ Не удалось загрузить данные. Проверьте ссылки на файлы.</div>';
+        if (!allSalesData || allSalesData.length === 0) {
+            dashboardDiv.innerHTML = '<div class="loader">❌ Не удалось загрузить данные. Проверьте доступ к таблицам (должен быть "Все, у кого есть ссылка").</div>';
             return;
         }
         
