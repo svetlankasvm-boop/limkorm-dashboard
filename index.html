@@ -2807,39 +2807,34 @@ const DATA_URLS = {
 // УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАГРУЗКИ (РАБОТАЕТ С МАССИВОМ)
 async function loadDataFromUrls(urls, isFirstFileHasHeader = true) {
     const urlList = Array.isArray(urls) ? urls : [urls];
+    
+    // Загружаем ВСЕ файлы параллельно
+    const allResults = await Promise.all(
+        urlList.map(async (url, index) => {
+            if (!url) return null;
+            console.log(`Загрузка: ${url}`);
+            const rows = await loadExcelFromUrl(url);
+            if (rows && rows.length > 1) {
+                console.log(`Загружено ${rows.length} строк из ${url.split('/').pop()}`);
+                return rows;
+            }
+            return null;
+        })
+    );
+    
+    // Объединяем результаты
     let combinedRows = [];
     let isFirstFile = true;
     
-    for (const url of urlList) {
-        if (!url) continue;
-        
-        console.log(`Загрузка: ${url}`);
-        
-        try {
-            const rows = await loadExcelFromUrl(url);
-            if (rows && rows.length > 1) {
-                console.log(`Загружено ${rows.length} строк`);
-                if (isFirstFile && isFirstFileHasHeader) {
-
-    for (let i = 0; i < rows.length; i++) {
-        combinedRows.push(rows[i]);
-    }
-
-    isFirstFile = false;
-
-} else {
-
-    for (let i = 1; i < rows.length; i++) {
-        combinedRows.push(rows[i]);
-    }
-}
+    for (const rows of allResults) {
+        if (rows && rows.length > 1) {
+            if (isFirstFile && isFirstFileHasHeader) {
+                combinedRows.push(...rows);
+                isFirstFile = false;
+            } else {
+                combinedRows.push(...rows.slice(1));
             }
-        } catch (error) {
-            console.error(`Ошибка загрузки ${url}:`, error);
         }
-        
-        // Пауза между запросами (важно для Google!)
-        await new Promise(r => setTimeout(r, 5000));
     }
     
     return combinedRows;
