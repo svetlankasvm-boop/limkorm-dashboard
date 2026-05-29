@@ -1,4 +1,3 @@
-https://replit.com/refer/svetlankasvm
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -1905,7 +1904,6 @@ function buildAIPrompt(salesData, kpiData, topBrands, topCities, topChannels, gr
     });
     
     const salesChange = totalSales2025 > 0 ? ((totalSales2026 - totalSales2025) / totalSales2025 * 100).toFixed(1) : 0;
-    const salesTrend = salesChange >= 0 ? '↑ рост' : '↓ падение';
     
     // Данные по брендам с динамикой
     let brandData = [];
@@ -1989,63 +1987,54 @@ function buildAIPrompt(salesData, kpiData, topBrands, topCities, topChannels, gr
     
     const getTopManager = (map, label) => {
         const sorted = Array.from(map.entries()).sort((a,b) => b[1] - a[1]).slice(0, 2);
-        return sorted.map(([name, kg]) => `${label}: ${name} (${(kg/totalSales2026*100).toFixed(1)}%)`).join(', ');
+        return sorted.map(([name, kg]) => `${label}:${name} ${(kg/totalSales2026*100).toFixed(1)}%`).join(' ');
     };
     
-    const managerInfo = [getTopManager(dmMap, 'ДМ'), getTopManager(rmMap, 'РМ'), getTopManager(svMap, 'СВ'), getTopManager(tpMap, 'ТП')].filter(s => s).join('\n     ');
+    const managerInfo = [getTopManager(dmMap, 'ДМ'), getTopManager(rmMap, 'РМ'), getTopManager(svMap, 'СВ'), getTopManager(tpMap, 'ТП')].filter(s => s).join(' | ');
     
-    // Формируем блок с данными
+    // Формируем компактный блок данных
     const dataBlock = `
-┌─────────────────────────────────────────────────────────────┐
-│  ПРОДАЖИ:                                                  │
-│     2025: ${Math.round(totalSales2025).toLocaleString()} кг      │
-│     2026: ${Math.round(totalSales2026).toLocaleString()} кг      │
-│     Динамика: ${salesChange}% (${salesTrend})                    │
-├─────────────────────────────────────────────────────────────┤
-│  ПОКАЗАТЕЛИ 2026 (изменение к 2025):                       │
-│     АКБ: ${kpiData.akb2026.toLocaleString()} ТТ (${kpiData.akbChangePct > 0 ? '+' : ''}${kpiData.akbChangePct.toFixed(1)}%)         │
-│     Продажи на ТТ: ${kpiData.avgSalesPerTT2026.toFixed(1)} кг (${kpiData.avgSalesChangePct > 0 ? '+' : ''}${kpiData.avgSalesChangePct.toFixed(1)}%) │
-│     SKU на ТТ: ${kpiData.avgSku2026.toFixed(1)} (${kpiData.avgSkuChangePct > 0 ? '+' : ''}${kpiData.avgSkuChangePct.toFixed(1)}%)          │
-│     Доля промо: ${kpiData.promoShare2026.toFixed(1)}% (${kpiData.promoShareChange > 0 ? '+' : ''}${kpiData.promoShareChange.toFixed(1)} п.п.)    │
-├─────────────────────────────────────────────────────────────┤
-│  БРЕНДЫ (доля 2026 / динамика):                            │
-${top5Brands.map(b => `│     • ${b.name}: ${(b.kg2026/totalSales2026*100).toFixed(1)}% (${b.change > 0 ? '↑' : '↓'} ${Math.abs(b.change)}%)`).join('\n')}
-├─────────────────────────────────────────────────────────────┤
-│  КАНАЛЫ (доля 2026 / динамика):                            │
-${topChannelsList.map(ch => `│     • ${ch.name}: ${(ch.kg2026/totalSales2026*100).toFixed(1)}% (${ch.change > 0 ? '↑' : '↓'} ${Math.abs(ch.change)}%)`).join('\n')}
-├─────────────────────────────────────────────────────────────┤
-│  ДИСТРИБЬЮТОРЫ (ТОП-3 по доле 2026):                      │
-${top3DT.map(dt => `│     • ${dt.name}: ${dt.percent.toFixed(1)}%`).join('\n')}
-├─────────────────────────────────────────────────────────────┤
-│  ТИПЫ КОРМА (доля 2026):                                   │
-${typeData.map(t => `│     • ${t.name}: ${t.percent.toFixed(1)}%`).join('\n')}
-├─────────────────────────────────────────────────────────────┤
-│  МЕНЕДЖЕРЫ (ТОП-2 по доле):                               │
-│     ${managerInfo}                                          │
-└─────────────────────────────────────────────────────────────┘`;
+Продажи: ${Math.round(totalSales2025).toLocaleString()} кг -> ${Math.round(totalSales2026).toLocaleString()} кг (${salesChange}%)
 
-    // ВОЗВРАЩАЕМ ПРОМПТ (текст, который отправится в GigaChat)
-    return `Ты — супер-профи аналитик по продажам кормов для животных. Твоя задача — глубоко вникнуть в данные, найти скрытые закономерности и дать реально полезные, применимые на практике бизнес-рекомендации.
+Показатели 2026 (изм к 2025):
+АКБ: ${kpiData.akb2026.toLocaleString()} ТТ (${kpiData.akbChangePct > 0 ? '+' : ''}${kpiData.akbChangePct.toFixed(1)}%)
+Продажи/ТТ: ${kpiData.avgSalesPerTT2026.toFixed(1)} кг (${kpiData.avgSalesChangePct > 0 ? '+' : ''}${kpiData.avgSalesChangePct.toFixed(1)}%)
+SKU/ТТ: ${kpiData.avgSku2026.toFixed(1)} (${kpiData.avgSkuChangePct > 0 ? '+' : ''}${kpiData.avgSkuChangePct.toFixed(1)}%)
+Промо: ${kpiData.promoShare2026.toFixed(1)}% (${kpiData.promoShareChange > 0 ? '+' : ''}${kpiData.promoShareChange.toFixed(1)} п.п.)
 
-Вот данные для анализа:
+Бренды (доля/изм):
+${top5Brands.map(b => `${b.name}: ${(b.kg2026/totalSales2026*100).toFixed(1)}% (${b.change > 0 ? '+' : ''}${b.change.toFixed(1)}%)`).join('\n')}
 
+Каналы (доля/изм):
+${topChannelsList.map(ch => `${ch.name}: ${(ch.kg2026/totalSales2026*100).toFixed(1)}% (${ch.change > 0 ? '+' : ''}${ch.change.toFixed(1)}%)`).join('\n')}
+
+ДТ: ${top3DT.map(d => `${d.name} ${d.percent.toFixed(1)}%`).join(' | ')}
+Типы: ${typeData.map(t => `${t.name} ${t.percent.toFixed(1)}%`).join(' | ')}
+Менеджеры: ${managerInfo}`;
+
+    return `Ты жесткий аналитик компании. Никаких иконок, эмодзи, лишних слов, приветствий и пояснений. Только сухие цифры и причины.
+
+Данные:
 ${dataBlock}
 
-Проанализируй как эксперт. Определи:
+Ответь строго в формате:
 
-1. ДИНАМИКА ПРОДАЖ: Растут (↑) или падают (↓)? На сколько %? За счёт какого ключевого показателя (АКБ / продажи на ТТ / SKU на ТТ / промо)?
+Динамика: [рост/падение] на X%. За счет: [АКБ/продажи на ТТ/SKU/промо]
 
-2. ДРАЙВЕРЫ: Какие бренды, каналы, дистрибьюторы, типы корма дали основной вклад в рост или падение? Назови конкретно, кто вырос (↑), кто упал (↓), на сколько примерно.
+Драйверы (кто и почему):
++ [Название] — [конкретная причина роста, с указанием кто обеспечил]
+- [Название] — [конкретная причина падения, с указанием что не сработало]
+(бренды, каналы, ДТ, типы, менеджеры)
 
-3. ОСТАТКИ: Есть признаки дефицита (↓ остатки, ↑ продажи → недополученная выручка)? Или затоваривание (↑ остатки, ↓ продажи)? Кратко. Если данных нет — напиши "нет данных".
+Остатки: [дефицит/затоваривание/нет данных]
+(если есть проблемы — указать, какие продажи могли быть выше)
 
-4. МЕНЕДЖЕРЫ (ДМ, РМ, СВ, ТП): Есть аномалии, резкие скачки, пики? Кто провалился (↓), кто вырос (↑)? Назови 1-2 имени.
+Вывод: [Молодец, ключевые драйверы: ... / Внимание, проблемные зоны: ...]
+> Действие 1 (кому и что сделать)
+> Действие 2
+> Действие 3
 
-5. ВЫВОД И РЕКОМЕНДАЦИИ: "Молодец, у вас рост! Ключевые драйверы: ..." или "Внимание, проблемные зоны: ..." + 2-3 конкретные рекомендации, что делать.
-
-Оформи ответ структурированно, с отступами и маркерами. Используй стрелки ↑ для роста и ↓ для падения. Без эмодзи. Без воды. Только польза.
-
-ОТВЕТ:`;
+Без воды. Без "также".`;
 }
 
 // Функция для обновления блока с ИИ-анализом (через прокси на Replit)
