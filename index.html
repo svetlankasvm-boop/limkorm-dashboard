@@ -240,37 +240,30 @@
     white-space: nowrap;
 }
 
-/* Аналитическое резюме с прокруткой */
-.insight-premium {
-    background: linear-gradient(112deg, #F0F8FA 0%, #FAFDFF 100%);
-    border-radius: 20px;
-    padding: 16px 24px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(0,192,222,0.3);
-    box-shadow: var(--shadow-sm);
-    max-height: 500px;           /* ← ОГРАНИЧЕНИЕ ВЫСОТЫ */
-    overflow-y: auto;            /* ← ВЕРТИКАЛЬНАЯ ПРОКРУТКА */
-    overflow-x: hidden;          /* ← ГОРИЗОНТАЛЬНУЮ УБИРАЕМ */
-}
+        /* Insight Panel */
+        .insight-premium {
+            background: linear-gradient(112deg, #F0F8FA 0%, #FAFDFF 100%);
+            border-radius: 20px;
+            padding: 16px 24px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0,192,222,0.3);
+            box-shadow: var(--shadow-sm);
+        }
 
-/* Стилизация скроллбара (опционально, красиво) */
-.insight-premium::-webkit-scrollbar {
-    width: 8px;
-}
+        .insight-title {
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-.insight-premium::-webkit-scrollbar-track {
-    background: var(--gray-100);
-    border-radius: 10px;
-}
-
-.insight-premium::-webkit-scrollbar-thumb {
-    background: var(--primary-light);
-    border-radius: 10px;
-}
-
-.insight-premium::-webkit-scrollbar-thumb:hover {
-    background: var(--primary);
-}
+        .insight-text {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: var(--gray-700);
+            font-weight: 500;
         }
 
         /* Chart Cards */
