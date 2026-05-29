@@ -2787,12 +2787,14 @@ if (inventoryDataParam && inventoryDataParam.length > 0) {
 // Прямые ссылки на скачивание ваших файлов (Excel формат) - ВЕРНЫЕ ССЫЛКИ
 const DATA_URLS = {
     sales: [
-        'https://docs.google.com/spreadsheets/d/1-ni1vhxJaIcoh9e6MR926MvWGL0agODR/export?format=xlsx',
-        'https://docs.google.com/spreadsheets/d/14L4vqxjodC9R1ciSTKEi7RRrf21l8MXl/export?format=xlsx',
-        'https://docs.google.com/spreadsheets/d/1rrCXRwP78sfDzT5FkpxjeGa7WaS5Ja5g/export?format=xlsx',
-        'https://docs.google.com/spreadsheets/d/1HNsvRRTdJhrfnUyh9cFP7cKWHNpKeXrq/export?format=xlsx',
-        'https://docs.google.com/spreadsheets/d/10WBGHk73V_XXf8A0Vmn92IrjkJMI7eXe/export?format=xlsx',
-        'https://docs.google.com/spreadsheets/d/1MIvcdrw0dKQ8F53HLMolN2udwAPLAtEw/export?format=xlsx'
+        'https://docs.google.com/spreadsheets/d/1yfFUZffRzMLldDLTAhZAonAMC8SeC2nC/export?format=xlsx',
+        'https://docs.google.com/spreadsheets/d/1YNLlJnanyy7--tVthZ2o0CFcMiwsVQUT/export?format=xlsx',
+        'https://docs.google.com/spreadsheets/d/1y1Ueed4YICrsBXjTsujobB8CIAiK1-h-/export?format=xlsx',
+        'https://docs.google.com/spreadsheets/d/1ZJh9ZKeWGWNt8cJb0a0puMV7R-MR5BwQ/export?format=xlsx',
+        'https://docs.google.com/spreadsheets/d/16cPyPHgcO71d0OCwnKb2gV8ziuKuQ72Q/export?format=xlsx',
+        'https://docs.google.com/spreadsheets/d/12FASw0mdXa79ooxbwiDDx68xD-VbNm44/export?format=xlsx',
+        'https://docs.google.com/spreadsheets/d/1B1ZM_B8HmdjpgMsGzlSFr9STb8HFXitG/export?format=xlsx',
+        'https://docs.google.com/spreadsheets/d/1i6qZbAOsSBFFItir32fW8DVbBi1Jqs4v/export?format=xlsx'
     ],
     inventory: [
         'https://docs.google.com/spreadsheets/d/1lpkFaRW1fwetPunfTUsZUeD6afoLG3QE/export?format=xlsx'
@@ -2859,20 +2861,16 @@ async function loadExcelFromUrl(url) {
             console.error(`HTTP ${response.status} для ${url}`);
             throw new Error(`HTTP ${response.status}`);
         }
-const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
-const rows = XLSX.utils.sheet_to_json(sheet, {
-    header: 1,
-    defval: ""
-});
-
-// очистка памяти
-delete workbook.Sheets;
-delete workbook;
-
-return rows;
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+        // очистка памяти
+        delete workbook.Sheets;
+        delete workbook;
+        return rows;
+    } catch (error) {
+        console.error(`Ошибка загрузки: ${url}`, error);
+        return null;
     }
 }
 
