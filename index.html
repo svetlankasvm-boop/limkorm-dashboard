@@ -3708,9 +3708,7 @@ function createMultiselect(container, field, label, values) {
                     }
                 }
                 updateButtonText();
-                // При изменении фильтра обновляем все остальные каскадно
                 updateAllFiltersCascade(field);
-                // Автоматически применяем фильтры
                 const filteredData = applyFilters(originalSalesData);
                 buildDashboard(filteredData);
             });
@@ -3730,7 +3728,6 @@ function createMultiselect(container, field, label, values) {
         }
     }
     
-    // Обработчики
     btn.addEventListener('click', (e) => {
         e.stopPropagation();
         dropdown.classList.toggle('show');
@@ -3745,106 +3742,6 @@ function createMultiselect(container, field, label, values) {
         });
     }
     
-    // Закрытие при клике вне
-    document.addEventListener('click', function(e) {
-        if (!container.contains(e.target)) {
-            dropdown.classList.remove('show');
-        }
-    });
-    
-    renderOptions();
-    updateButtonText();
-}
-    
-    function renderOptions(filterText = '') {
-        let html = '';
-        sortedValues.forEach(value => {
-            if (value === 'all') {
-                const isChecked = selectedValues.size === 0 || selectedValues.has('all');
-                html += `
-                    <div class="multiselect-option" data-value="all">
-                        <input type="checkbox" ${isChecked ? 'checked' : ''} id="${field}_all">
-                        <label for="${field}_all">Все ${label}</label>
-                    </div>
-                `;
-            } else {
-                const displayValue = value;
-                if (filterText && !String(displayValue).toLowerCase().includes(filterText.toLowerCase())) return;
-                const isChecked = selectedValues.has(value);
-                html += `
-                    <div class="multiselect-option" data-value="${String(value).replace(/"/g, '&quot;')}">
-                        <input type="checkbox" ${isChecked ? 'checked' : ''} id="${field}_${String(value).replace(/[^a-z0-9]/gi, '_')}">
-                        <label for="${field}_${String(value).replace(/[^a-z0-9]/gi, '_')}">${displayValue}</label>
-                    </div>
-                `;
-            }
-        });
-        optionsContainer.innerHTML = html;
-        
-        // Добавляем обработчики
-        optionsContainer.querySelectorAll('.multiselect-option').forEach(opt => {
-            const checkbox = opt.querySelector('input');
-            const value = opt.dataset.value;
-            
-            checkbox.addEventListener('change', (e) => {
-                e.stopPropagation();
-                if (value === 'all') {
-                    if (checkbox.checked) {
-                        selectedValues.clear();
-                        selectedValues.add('all');
-                        optionsContainer.querySelectorAll('.multiselect-option').forEach(o => {
-                            if (o.dataset.value !== 'all') {
-                                o.querySelector('input').checked = false;
-                            }
-                        });
-                    } else {
-                        selectedValues.delete('all');
-                    }
-                } else {
-                    if (checkbox.checked) {
-                        selectedValues.delete('all');
-                        if (optionsContainer.querySelector('.multiselect-option[data-value="all"] input')) {
-                            optionsContainer.querySelector('.multiselect-option[data-value="all"] input').checked = false;
-                        }
-                        selectedValues.add(value);
-                    } else {
-                        selectedValues.delete(value);
-                    }
-                }
-                updateButtonText();
-            });
-        });
-    }
-    
-    function updateButtonText() {
-        const count = selectedValues.size === 0 || (selectedValues.size === 1 && selectedValues.has('all')) ? 0 : selectedValues.size;
-        if (count === 0) {
-            valueSpan.innerHTML = `Все ${label}`;
-        } else {
-            valueSpan.innerHTML = `Выбрано: ${count}`;
-            const countSpan = document.createElement('span');
-            countSpan.className = 'selected-count';
-            countSpan.textContent = count;
-            valueSpan.appendChild(countSpan);
-        }
-    }
-    
-    // Обработчики
-    btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('show');
-        if (dropdown.classList.contains('show') && searchInput) {
-            searchInput.focus();
-        }
-    });
-    
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            renderOptions(e.target.value);
-        });
-    }
-    
-    // Закрытие при клике вне
     document.addEventListener('click', function(e) {
         if (!container.contains(e.target)) {
             dropdown.classList.remove('show');
