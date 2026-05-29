@@ -2941,62 +2941,7 @@ async function loadDataFromUrls(urls, isFirstFileHasHeader = true, batchSize = 2
     return combinedRows;
 }
 
-// УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАГРУЗКИ (ПАРАЛЛЕЛЬНАЯ С ОГРАНИЧЕНИЕМ)
-async function loadDataFromUrls(urls, isFirstFileHasHeader = true, batchSize = 2) {
-    const urlList = Array.isArray(urls) ? urls : [urls];
-    let combinedRows = [];
-    let isFirstFile = true;
-    
-    console.log(`🚀 Начинаем загрузку ${urlList.length} файлов, по ${batchSize} одновременно`);
-    
-    // Разбиваем на группы по batchSize файлов
-    for (let i = 0; i < urlList.length; i += batchSize) {
-        const batch = urlList.slice(i, i + batchSize);
-        const batchNumber = Math.floor(i / batchSize) + 1;
-        const totalBatches = Math.ceil(urlList.length / batchSize);
-        
-        console.log(`\n📦 Группа ${batchNumber}/${totalBatches}: загружаем ${batch.length} файлов одновременно`);
-        
-        // Загружаем группу параллельно
-        const batchResults = await Promise.all(
-            batch.map(async (url, idx) => {
-                console.log(`  📁 Файл ${i + idx + 1} начал загрузку...`);
-                const rows = await loadExcelFromUrl(url);
-                console.log(`  ✅ Файл ${i + idx + 1} загружен: ${rows?.length || 0} строк`);
-                return rows;
-            })
-        );
-        
-        // Обрабатываем результаты группы
-        for (const rows of batchResults) {
-            if (rows && rows.length > 1) {
-                if (isFirstFile && isFirstFileHasHeader) {
-                    // Первый файл в первой группе: добавляем все строки (включая заголовки)
-                    for (let j = 0; j < rows.length; j++) {
-                        combinedRows.push(rows[j]);
-                    }
-                    isFirstFile = false;
-                } else {
-                    // Остальные файлы: добавляем без первой строки
-                    for (let j = 1; j < rows.length; j++) {
-                        combinedRows.push(rows[j]);
-                    }
-                }
-            } else {
-                console.warn(`⚠️ Файл в группе ${batchNumber} не содержит данных`);
-            }
-        }
-        
-        // Пауза между группами
-        if (i + batchSize < urlList.length) {
-            console.log(`⏳ Пауза 3 секунды перед следующей группой...`);
-            await new Promise(r => setTimeout(r, 3000));
-        }
-    }
-    
-    console.log(`\n📊 Всего загружено строк: ${combinedRows.length}`);
-    return combinedRows;
-}
+
 // Парсинг продаж (индексы под ваш файл)
 function parseSalesDataFromRows(rows) {
     const salesData = [];
@@ -3137,6 +3082,34 @@ document.addEventListener('DOMContentLoaded', function() {
     // Запускаем загрузку
     loadAllData();
 });
+// Функция загрузки Excel
+async function loadExcelFromUrl(url) {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+        
+        // Очистка памяти
+        delete workbook.Sheets;
+        delete workbook;
+        
+        return rows;
+    } catch (error) {
+        console.error(`Ошибка загрузки: ${url}`, error);
+        return null;
+    }
+}
 // Функция для расчета данных по месяцам
 function calculateTableData(salesData) {
     const tableDataMap = new Map();
