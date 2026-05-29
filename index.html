@@ -992,6 +992,80 @@
 .dt-row td:first-child, .type-parent-row td:first-child {
     font-weight: 600;
 }
+/* Прогресс-бар */
+.progress-container {
+    background: white;
+    border-radius: 24px;
+    padding: 24px 32px;
+    margin: 20px 0;
+    box-shadow: var(--shadow-md);
+    text-align: center;
+}
+
+.progress-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.progress-title .spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--gray-200);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.progress-bar-wrapper {
+    background: var(--gray-200);
+    border-radius: 40px;
+    height: 12px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.progress-bar-fill {
+    background: var(--gradient-primary);
+    border-radius: 40px;
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.progress-stats {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.progress-current-file {
+    font-weight: 600;
+    color: var(--primary);
+    background: rgba(0,96,152,0.1);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+}
+
+.progress-percent {
+    font-weight: 700;
+    color: var(--primary-dark);
+    font-size: 1rem;
+}
     </style>
 </head>
 <body>
@@ -2804,11 +2878,16 @@ const DATA_URLS = {
     ]
 };
 
-// УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАГРУЗКИ (ПАРАЛЛЕЛЬНАЯ С ОГРАНИЧЕНИЕМ)
+// УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАГРУЗКИ (ПАРАЛЛЕЛЬНАЯ С ОГРАНИЧЕНИЕМ + ПРОГРЕСС)
 async function loadDataFromUrls(urls, isFirstFileHasHeader = true, batchSize = 2) {
     const urlList = Array.isArray(urls) ? urls : [urls];
     let combinedRows = [];
     let isFirstFile = true;
+    let totalProcessed = 0;
+    
+    // Показываем прогресс-бар
+    showProgressBar();
+    updateProgress(0, urlList.length, 'Начинаем загрузку...');
     
     console.log(`🚀 Начинаем загрузку ${urlList.length} файлов, по ${batchSize} одновременно`);
     
@@ -2818,14 +2897,15 @@ async function loadDataFromUrls(urls, isFirstFileHasHeader = true, batchSize = 2
         const batchNumber = Math.floor(i / batchSize) + 1;
         const totalBatches = Math.ceil(urlList.length / batchSize);
         
-        console.log(`\n📦 Группа ${batchNumber}/${totalBatches}: загружаем ${batch.length} файлов одновременно`);
+        updateProgressText(`📦 Группа ${batchNumber}/${totalBatches}`);
         
         // Загружаем группу параллельно
         const batchResults = await Promise.all(
             batch.map(async (url, idx) => {
-                console.log(`  📁 Файл ${i + idx + 1} начал загрузку...`);
+                const fileNum = i + idx + 1;
+                updateProgressText(`📁 Файл ${fileNum}/${urlList.length}...`);
                 const rows = await loadExcelFromUrl(url);
-                console.log(`  ✅ Файл ${i + idx + 1} загружен: ${rows?.length || 0} строк`);
+                console.log(`✅ Файл ${fileNum} загружен: ${rows?.length || 0} строк`);
                 return rows;
             })
         );
@@ -2834,30 +2914,30 @@ async function loadDataFromUrls(urls, isFirstFileHasHeader = true, batchSize = 2
         for (const rows of batchResults) {
             if (rows && rows.length > 1) {
                 if (isFirstFile && isFirstFileHasHeader) {
-                    // Первый файл в первой группе: добавляем все строки (включая заголовки)
                     for (let j = 0; j < rows.length; j++) {
                         combinedRows.push(rows[j]);
                     }
                     isFirstFile = false;
                 } else {
-                    // Остальные файлы: добавляем без первой строки
                     for (let j = 1; j < rows.length; j++) {
                         combinedRows.push(rows[j]);
                     }
                 }
-            } else {
-                console.warn(`⚠️ Файл в группе ${batchNumber} не содержит данных`);
             }
+            totalProcessed++;
+            updateProgress(totalProcessed, urlList.length);
         }
         
         // Пауза между группами
         if (i + batchSize < urlList.length) {
-            console.log(`⏳ Пауза 3 секунды перед следующей группой...`);
+            updateProgressText(`⏳ Пауза 3 секунды...`);
             await new Promise(r => setTimeout(r, 3000));
         }
     }
     
-    console.log(`\n📊 Всего загружено строк: ${combinedRows.length}`);
+    updateProgressText(`✅ Загружено ${combinedRows.length} строк! Построение аналитики...`);
+    console.log(`📊 Всего загружено строк: ${combinedRows.length}`);
+    
     return combinedRows;
 }
 
@@ -3010,24 +3090,22 @@ function parseInventoryDataFromRows(rows) {
 }
 // ГЛАВНАЯ ФУНКЦИЯ ЗАГРУЗКИ
 async function loadAllData() {
-    const dashboardDiv = document.getElementById('dashboardContent');
-    dashboardDiv.innerHTML = '<div class="loader">📁 Загрузка данных...</div>';
+    // Показываем прогресс-бар сразу
+    showProgressBar();
     
     try {
-        // 1. Загружаем продажи из нескольких файлов
-        dashboardDiv.innerHTML = '<div class="loader">📊 Загрузка данных продаж...</div>';
-        const salesRows = await loadDataFromUrls(DATA_URLS.sales, true);
+        // 1. Загружаем продажи
+        updateProgressText('📊 Загрузка данных продаж...');
+        const salesRows = await loadDataFromUrls(DATA_URLS.sales, true, 2);
         let allSalesData = [];
         if (salesRows && salesRows.length > 1) {
             allSalesData = parseSalesDataFromRows(salesRows);
             console.log(`✅ Загружено ${allSalesData.length} записей продаж`);
-        } else {
-            console.warn('salesRows пуст или недостаточно данных');
         }
         
         // 2. Загружаем остатки
-        dashboardDiv.innerHTML = '<div class="loader">📦 Загрузка данных об остатках...</div>';
-        const inventoryRows = await loadDataFromUrls(DATA_URLS.inventory, true);
+        updateProgressText('📦 Загрузка данных об остатках...');
+        const inventoryRows = await loadDataFromUrls(DATA_URLS.inventory, true, 2);
         let allInventoryData = [];
         if (inventoryRows && inventoryRows.length > 1) {
             allInventoryData = parseInventoryDataFromRows(inventoryRows);
@@ -3035,16 +3113,16 @@ async function loadAllData() {
         }
         
         if (!allSalesData || allSalesData.length === 0) {
-            dashboardDiv.innerHTML = '<div class="loader">❌ Не удалось загрузить данные. Проверьте доступ к таблицам (должен быть "Все, у кого есть ссылка").</div>';
+            document.getElementById('dashboardContent').innerHTML = '<div class="loader">❌ Не удалось загрузить данные. Проверьте доступ к таблицам.</div>';
             return;
         }
         
-        dashboardDiv.innerHTML = '<div class="loader">📈 Построение аналитики...</div>';
+        updateProgressText('📈 Построение аналитики...');
         buildDashboard(allSalesData, allInventoryData);
         
     } catch (error) {
         console.error('Ошибка загрузки:', error);
-        dashboardDiv.innerHTML = '<div class="loader">❌ Ошибка загрузки данных. Проверьте доступ к файлам.</div>';
+        document.getElementById('dashboardContent').innerHTML = '<div class="loader">❌ Ошибка загрузки данных. Проверьте доступ к файлам.</div>';
     }
 }
 
@@ -3954,6 +4032,52 @@ function initTableControls() {
 // Обновление таблицы при изменении выбора метрик
 function updateTableWithSelectedMetrics() {
     renderDynamicTable();
+}
+// Функции для прогресс-бара
+let progressBarFill = null;
+let progressPercentSpan = null;
+let progressCurrentSpan = null;
+
+function showProgressBar() {
+    const dashboardDiv = document.getElementById('dashboardContent');
+    dashboardDiv.innerHTML = `
+        <div class="progress-container">
+            <div class="progress-title">
+                <div class="spinner"></div>
+                <span>Загрузка данных</span>
+            </div>
+            <div class="progress-bar-wrapper">
+                <div class="progress-bar-fill" id="progressBarFill"></div>
+            </div>
+            <div class="progress-stats">
+                <span class="progress-current-file" id="progressCurrentFile">Подготовка...</span>
+                <span class="progress-percent" id="progressPercent">0%</span>
+            </div>
+        </div>
+    `;
+    
+    progressBarFill = document.getElementById('progressBarFill');
+    progressPercentSpan = document.getElementById('progressPercent');
+    progressCurrentSpan = document.getElementById('progressCurrentFile');
+}
+
+function updateProgress(current, total, fileName = '') {
+    if (!progressBarFill || !progressPercentSpan) return;
+    
+    const percent = Math.round((current / total) * 100);
+    progressBarFill.style.width = `${percent}%`;
+    progressPercentSpan.textContent = `${percent}%`;
+    
+    if (fileName && progressCurrentSpan) {
+        let shortName = fileName.split('/').pop().substring(0, 40);
+        progressCurrentSpan.textContent = `📄 ${shortName}...`;
+    }
+}
+
+function updateProgressText(text) {
+    if (progressCurrentSpan) {
+        progressCurrentSpan.textContent = text;
+    }
 }
 </script>
 </body>
