@@ -2652,7 +2652,6 @@ const fullHtml = `
             </div>
         </div>
         
-        <button class="apply-filters-btn" id="applyFiltersBtn" style="padding: 4px 12px; font-size: 0.7rem; flex-shrink: 0;">Прим</button>
         <button class="reset-filters-btn" id="resetFiltersBtn" style="padding: 4px 12px; font-size: 0.7rem; flex-shrink: 0;">Сбр</button>
     </div>
 </div>
@@ -3637,7 +3636,6 @@ function showContextMenu(x, y, metric) {
         }
     });
 }
-// Создание мультиселекта
 function createMultiselect(container, field, label, values) {
     const btn = container.querySelector('.multiselect-btn');
     const dropdown = container.querySelector('.multiselect-dropdown');
@@ -3645,16 +3643,118 @@ function createMultiselect(container, field, label, values) {
     const searchInput = container.querySelector('.multiselect-search input');
     const valueSpan = container.querySelector('.multiselect-value');
     
-    let selectedValues = filterValues[field];
-    
     // Сортируем значения по алфавиту (кроме 'all')
-const sortedValues = [...values]
-    .filter(v => v !== 'all')
-    .sort((a, b) => {
-        if (typeof a === 'number') return a - b;
-        return String(a).localeCompare(String(b), 'ru');
-    });
+    const sortedValues = [...values]
+        .filter(v => v !== 'all')
+        .sort((a, b) => {
+            if (typeof a === 'number') return a - b;
+            return String(a).localeCompare(String(b), 'ru');
+        });
     if (values.has('all')) sortedValues.unshift('all');
+    
+    function renderOptions(filterText = '') {
+        let html = '';
+        sortedValues.forEach(value => {
+            if (value === 'all') {
+                const isChecked = filterValues[field].size === 0 || filterValues[field].has('all');
+                html += `
+                    <div class="multiselect-option" data-value="all">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} id="${field}_all">
+                        <label for="${field}_all">Все ${field === 'year' ? 'годы' : (field === 'month' ? 'месяцы' : label)}</label>
+                    </div>
+                `;
+            } else {
+                const displayValue = value;
+                if (filterText && !String(displayValue).toLowerCase().includes(filterText.toLowerCase())) return;
+                const isChecked = filterValues[field].has(value);
+                html += `
+                    <div class="multiselect-option" data-value="${String(value).replace(/"/g, '&quot;')}">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} id="${field}_${String(value).replace(/[^a-z0-9]/gi, '_')}">
+                        <label for="${field}_${String(value).replace(/[^a-z0-9]/gi, '_')}">${displayValue}</label>
+                    </div>
+                `;
+            }
+        });
+        optionsContainer.innerHTML = html;
+        
+        // Добавляем обработчики
+        optionsContainer.querySelectorAll('.multiselect-option').forEach(opt => {
+            const checkbox = opt.querySelector('input');
+            const value = opt.dataset.value;
+            
+            checkbox.addEventListener('change', (e) => {
+                e.stopPropagation();
+                if (value === 'all') {
+                    if (checkbox.checked) {
+                        filterValues[field].clear();
+                        filterValues[field].add('all');
+                        optionsContainer.querySelectorAll('.multiselect-option').forEach(o => {
+                            if (o.dataset.value !== 'all') {
+                                o.querySelector('input').checked = false;
+                            }
+                        });
+                    } else {
+                        filterValues[field].delete('all');
+                    }
+                } else {
+                    if (checkbox.checked) {
+                        filterValues[field].delete('all');
+                        if (optionsContainer.querySelector('.multiselect-option[data-value="all"] input')) {
+                            optionsContainer.querySelector('.multiselect-option[data-value="all"] input').checked = false;
+                        }
+                        filterValues[field].add(value);
+                    } else {
+                        filterValues[field].delete(value);
+                    }
+                }
+                updateButtonText();
+                // При изменении фильтра обновляем все остальные каскадно
+                updateAllFiltersCascade(field);
+                // Автоматически применяем фильтры
+                const filteredData = applyFilters(originalSalesData);
+                buildDashboard(filteredData);
+            });
+        });
+    }
+    
+    function updateButtonText() {
+        const count = filterValues[field].size === 0 || (filterValues[field].size === 1 && filterValues[field].has('all')) ? 0 : filterValues[field].size;
+        if (count === 0) {
+            valueSpan.innerHTML = field === 'year' ? 'Год' : (field === 'month' ? 'Мес' : field.toUpperCase());
+        } else {
+            valueSpan.innerHTML = `Выбрано: ${count}`;
+            const countSpan = document.createElement('span');
+            countSpan.className = 'selected-count';
+            countSpan.textContent = count;
+            valueSpan.appendChild(countSpan);
+        }
+    }
+    
+    // Обработчики
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('show');
+        if (dropdown.classList.contains('show') && searchInput) {
+            searchInput.focus();
+        }
+    });
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            renderOptions(e.target.value);
+        });
+    }
+    
+    // Закрытие при клике вне
+    document.addEventListener('click', function(e) {
+        if (!container.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+    
+    renderOptions();
+    updateButtonText();
+}
     
     function renderOptions(filterText = '') {
         let html = '';
@@ -3761,48 +3861,48 @@ function populateFilters(salesData) {
         { field: 'year', label: 'Год', getValues: (data) => {
             const years = new Set(['all']);
             data.forEach(item => { if (item.year) years.add(item.year); });
-            return years; // Возвращаем Set, а не массив
+            return years;
         }},
         { field: 'month', label: 'Месяц', getValues: (data) => {
             const months = new Set(['all']);
             const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
             data.forEach(item => { if (item.month) months.add(monthNames[item.month - 1] || item.month); });
-            return months; // Возвращаем Set
+            return months;
         }},
         { field: 'dm', label: 'ДМ', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.dm && item.dm !== "") values.add(item.dm); });
-            return values; // Возвращаем Set
+            return values;
         }},
         { field: 'rm', label: 'РМ', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.rm && item.rm !== "") values.add(item.rm); });
-            return values; // Возвращаем Set
+            return values;
         }},
         { field: 'dt', label: 'ДТ', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.dt && item.dt !== "") values.add(item.dt); });
-            return values; // Возвращаем Set
+            return values;
         }},
         { field: 'sv', label: 'СВ', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.sv && item.sv !== "") values.add(item.sv); });
-            return values; // Возвращаем Set
+            return values;
         }},
         { field: 'tp', label: 'ТП', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.tp && item.tp !== "") values.add(item.tp); });
-            return values; // Возвращаем Set
+            return values;
         }},
         { field: 'tm', label: 'ТМ', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.tm && item.tm !== "") values.add(item.tm); });
-            return values; // Возвращаем Set
+            return values;
         }},
         { field: 'type', label: 'Тип', getValues: (data) => {
             const values = new Set(['all']);
             data.forEach(item => { if (item.type && item.type !== "") values.add(item.type); });
-            return values; // Возвращаем Set
+            return values;
         }}
     ];
     
@@ -3813,63 +3913,235 @@ function populateFilters(salesData) {
             createMultiselect(container, field, label, values);
         }
     });
+    
+    // Инициализируем каскадные связи после создания всех мультиселектов
+    setTimeout(() => {
+        updateAllFiltersCascade();
+    }, 100);
 }
-// Функция для фильтрации данных (множественный выбор)
-function applyFilters(data) {
+function applyFilters(data, skipField = null) {
     return data.filter(item => {
         // Год
-        if (filterValues.year.size > 0 && !filterValues.year.has('all')) {
+        if (skipField !== 'year' && filterValues.year.size > 0 && !filterValues.year.has('all')) {
             if (!filterValues.year.has(item.year)) return false;
         }
         // Месяц
-        if (filterValues.month.size > 0 && !filterValues.month.has('all')) {
+        if (skipField !== 'month' && filterValues.month.size > 0 && !filterValues.month.has('all')) {
             const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
             const monthName = monthNames[item.month - 1] || item.month;
             if (!filterValues.month.has(monthName)) return false;
         }
         // ДМ
-        if (filterValues.dm.size > 0 && !filterValues.dm.has('all')) {
+        if (skipField !== 'dm' && filterValues.dm.size > 0 && !filterValues.dm.has('all')) {
             if (!filterValues.dm.has(item.dm)) return false;
         }
         // РМ
-        if (filterValues.rm.size > 0 && !filterValues.rm.has('all')) {
+        if (skipField !== 'rm' && filterValues.rm.size > 0 && !filterValues.rm.has('all')) {
             if (!filterValues.rm.has(item.rm)) return false;
         }
         // ДТ
-        if (filterValues.dt.size > 0 && !filterValues.dt.has('all')) {
+        if (skipField !== 'dt' && filterValues.dt.size > 0 && !filterValues.dt.has('all')) {
             if (!filterValues.dt.has(item.dt)) return false;
         }
         // СВ
-        if (filterValues.sv.size > 0 && !filterValues.sv.has('all')) {
+        if (skipField !== 'sv' && filterValues.sv.size > 0 && !filterValues.sv.has('all')) {
             if (!filterValues.sv.has(item.sv)) return false;
         }
         // ТП
-        if (filterValues.tp.size > 0 && !filterValues.tp.has('all')) {
+        if (skipField !== 'tp' && filterValues.tp.size > 0 && !filterValues.tp.has('all')) {
             if (!filterValues.tp.has(item.tp)) return false;
         }
         // ТМ
-        if (filterValues.tm.size > 0 && !filterValues.tm.has('all')) {
+        if (skipField !== 'tm' && filterValues.tm.size > 0 && !filterValues.tm.has('all')) {
             if (!filterValues.tm.has(item.tm)) return false;
         }
         // Тип
-        if (filterValues.type.size > 0 && !filterValues.type.has('all')) {
+        if (skipField !== 'type' && filterValues.type.size > 0 && !filterValues.type.has('all')) {
             if (!filterValues.type.has(item.type)) return false;
         }
         return true;
     });
 }
-// Инициализация обработчиков фильтров
-function initFilters() {
-    const applyBtn = document.getElementById('applyFiltersBtn');
-    const resetBtn = document.getElementById('resetFiltersBtn');
+// Функция для получения доступных значений фильтра с учетом других выбранных фильтров
+function getAvailableFilterValues(field, data) {
+    // Применяем все фильтры КРОМЕ текущего
+    const filteredData = applyFilters(data, field);
     
-    if (applyBtn) {
-        applyBtn.addEventListener('click', function() {
-            // Собираем значения фильтров (уже обновляются в реальном времени)
-            const filteredData = applyFilters(originalSalesData);
-            buildDashboard(filteredData);
+    const values = new Set(['all']);
+    
+    filteredData.forEach(item => {
+        if (field === 'year' && item.year) {
+            values.add(item.year);
+        } else if (field === 'month' && item.month) {
+            const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+            values.add(monthNames[item.month - 1] || item.month);
+        } else if (field === 'dm' && item.dm && item.dm !== "") {
+            values.add(item.dm);
+        } else if (field === 'rm' && item.rm && item.rm !== "") {
+            values.add(item.rm);
+        } else if (field === 'dt' && item.dt && item.dt !== "") {
+            values.add(item.dt);
+        } else if (field === 'sv' && item.sv && item.sv !== "") {
+            values.add(item.sv);
+        } else if (field === 'tp' && item.tp && item.tp !== "") {
+            values.add(item.tp);
+        } else if (field === 'tm' && item.tm && item.tm !== "") {
+            values.add(item.tm);
+        } else if (field === 'type' && item.type && item.type !== "") {
+            values.add(item.type);
+        }
+    });
+    
+    return values;
+}
+
+// Функция для обновления всех фильтров каскадно
+function updateAllFiltersCascade(changedField = null) {
+    const fields = ['year', 'month', 'dm', 'rm', 'dt', 'sv', 'tp', 'tm', 'type'];
+    
+    fields.forEach(field => {
+        const container = document.querySelector(`.multiselect[data-field="${field}"]`);
+        if (container) {
+            const availableValues = getAvailableFilterValues(field, originalSalesData);
+            
+            // Сохраняем текущие выбранные значения, убираем те, которые больше недоступны
+            const currentSelected = filterValues[field];
+            const newSelected = new Set();
+            
+            if (currentSelected.has('all')) {
+                newSelected.add('all');
+            } else {
+                currentSelected.forEach(value => {
+                    if (availableValues.has(value)) {
+                        newSelected.add(value);
+                    }
+                });
+                // Если ничего не осталось, добавляем 'all'
+                if (newSelected.size === 0) {
+                    newSelected.add('all');
+                }
+            }
+            filterValues[field] = newSelected;
+            
+            // Обновляем отображение мультиселекта
+            updateMultiselectOptions(container, field, availableValues, newSelected);
+        }
+    });
+}
+
+// Функция обновления опций в мультиселекте
+function updateMultiselectOptions(container, field, availableValues, selectedValues) {
+    const optionsContainer = container.querySelector('.multiselect-options');
+    const valueSpan = container.querySelector('.multiselect-value');
+    
+    if (!optionsContainer) return;
+    
+    // Сортируем значения
+    const sortedValues = [...availableValues]
+        .filter(v => v !== 'all')
+        .sort((a, b) => {
+            if (typeof a === 'number') return a - b;
+            return String(a).localeCompare(String(b), 'ru');
+        });
+    
+    if (availableValues.has('all')) sortedValues.unshift('all');
+    
+    function renderOptions(filterText = '') {
+        let html = '';
+        sortedValues.forEach(value => {
+            if (value === 'all') {
+                const isChecked = selectedValues.size === 0 || selectedValues.has('all');
+                html += `
+                    <div class="multiselect-option" data-value="all">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} id="${field}_all">
+                        <label for="${field}_all">Все ${field === 'year' ? 'годы' : (field === 'month' ? 'месяцы' : field)}</label>
+                    </div>
+                `;
+            } else {
+                const displayValue = value;
+                if (filterText && !String(displayValue).toLowerCase().includes(filterText.toLowerCase())) return;
+                const isChecked = selectedValues.has(value);
+                html += `
+                    <div class="multiselect-option" data-value="${String(value).replace(/"/g, '&quot;')}">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} id="${field}_${String(value).replace(/[^a-z0-9]/gi, '_')}">
+                        <label for="${field}_${String(value).replace(/[^a-z0-9]/gi, '_')}">${displayValue}</label>
+                    </div>
+                `;
+            }
+        });
+        optionsContainer.innerHTML = html;
+        
+        // Добавляем обработчики
+        optionsContainer.querySelectorAll('.multiselect-option').forEach(opt => {
+            const checkbox = opt.querySelector('input');
+            const value = opt.dataset.value;
+            
+            const newCheckbox = checkbox.cloneNode(true);
+            checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+            
+            newCheckbox.addEventListener('change', (e) => {
+                e.stopPropagation();
+                if (value === 'all') {
+                    if (newCheckbox.checked) {
+                        filterValues[field].clear();
+                        filterValues[field].add('all');
+                        optionsContainer.querySelectorAll('.multiselect-option').forEach(o => {
+                            if (o.dataset.value !== 'all') {
+                                const cb = o.querySelector('input');
+                                if (cb) cb.checked = false;
+                            }
+                        });
+                    } else {
+                        filterValues[field].delete('all');
+                    }
+                } else {
+                    if (newCheckbox.checked) {
+                        filterValues[field].delete('all');
+                        if (optionsContainer.querySelector('.multiselect-option[data-value="all"] input')) {
+                            optionsContainer.querySelector('.multiselect-option[data-value="all"] input').checked = false;
+                        }
+                        filterValues[field].add(value);
+                    } else {
+                        filterValues[field].delete(value);
+                    }
+                }
+                updateButtonText(valueSpan, field);
+                // При изменении фильтра обновляем все остальные каскадно
+                updateAllFiltersCascade(field);
+                // Автоматически применяем фильтры
+                const filteredData = applyFilters(originalSalesData);
+                buildDashboard(filteredData);
+            });
         });
     }
+    
+    function updateButtonText(span, fld) {
+        const count = filterValues[fld].size === 0 || (filterValues[fld].size === 1 && filterValues[fld].has('all')) ? 0 : filterValues[fld].size;
+        if (count === 0) {
+            span.innerHTML = fld === 'year' ? 'Год' : (fld === 'month' ? 'Мес' : fld.toUpperCase());
+        } else {
+            span.innerHTML = `Выбрано: ${count}`;
+            const countSpan = document.createElement('span');
+            countSpan.className = 'selected-count';
+            countSpan.textContent = count;
+            span.appendChild(countSpan);
+        }
+    }
+    
+    const searchInput = container.querySelector('.multiselect-search input');
+    if (searchInput) {
+        const newSearch = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearch, searchInput);
+        newSearch.addEventListener('input', (e) => {
+            renderOptions(e.target.value);
+        });
+    }
+    
+    renderOptions();
+    updateButtonText(valueSpan, field);
+}
+function initFilters() {
+    const resetBtn = document.getElementById('resetFiltersBtn');
     
     if (resetBtn) {
         resetBtn.addEventListener('click', function() {
@@ -3885,12 +4157,13 @@ function initFilters() {
                 tm: new Set(),
                 type: new Set()
             };
+            // Обновляем все фильтры каскадно
+            updateAllFiltersCascade();
             // Перестраиваем дашборд с исходными данными
             buildDashboard(originalSalesData);
         });
     }
 }
-
 function renderInventoryTable(inventoryImpact) {
     const container = document.getElementById('inventoryTable');
     if (!container) return;
