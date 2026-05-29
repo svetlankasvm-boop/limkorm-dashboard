@@ -1885,7 +1885,7 @@ const sortedMonths = Array.from(monthlyMap.keys()).sort((a, b) => {
         
 const insightHtml = `
     <div class="insight-title">
-        <span>🤖 ИИ-АНАЛИЗ (GigaChat)</span>
+        <span>Аналитическое резюме</span>
     </div>
     <div class="insight-text" id="aiAnalysisContent">
         ⏳ Загрузка ИИ-анализа...
@@ -1898,46 +1898,154 @@ function buildAIPrompt(salesData, kpiData, topBrands, topCities, topChannels, gr
     // Собираем статистику за 2025 и 2026 годы
     let totalSales2025 = 0;
     let totalSales2026 = 0;
-    let monthsWithData = new Set();
     
     salesData.forEach(sale => {
         if (sale.year === 2025 && sale.weightKg) totalSales2025 += sale.weightKg;
         if (sale.year === 2026 && sale.weightKg) totalSales2026 += sale.weightKg;
-        if (sale.year) monthsWithData.add(`${sale.year}-${sale.month}`);
     });
     
     const salesChange = totalSales2025 > 0 ? ((totalSales2026 - totalSales2025) / totalSales2025 * 100).toFixed(1) : 0;
+    const salesTrend = salesChange >= 0 ? '↑ рост' : '↓ падение';
     
-    // Формируем промпт
-    return `Проанализируй данные по продажам кормов для животных и дай рекомендации:
+    // Данные по брендам с динамикой
+    let brandData = [];
+    const brand2025 = new Map();
+    const brand2026 = new Map();
+    
+    salesData.forEach(sale => {
+        if (sale.brand && sale.weightKg) {
+            if (sale.year === 2025) brand2025.set(sale.brand, (brand2025.get(sale.brand) || 0) + sale.weightKg);
+            if (sale.year === 2026) brand2026.set(sale.brand, (brand2026.get(sale.brand) || 0) + sale.weightKg);
+        }
+    });
+    
+    const allBrands = new Set([...brand2025.keys(), ...brand2026.keys()]);
+    allBrands.forEach(brand => {
+        const val2025 = brand2025.get(brand) || 0;
+        const val2026 = brand2026.get(brand) || 0;
+        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : 0;
+        brandData.push({ name: brand, kg2026: val2026, change: parseFloat(change) });
+    });
+    brandData.sort((a,b) => b.kg2026 - a.kg2026);
+    const top5Brands = brandData.slice(0,5);
+    
+    // Данные по каналам с динамикой
+    let channelData = [];
+    const channel2025 = new Map();
+    const channel2026 = new Map();
+    
+    salesData.forEach(sale => {
+        if (sale.channel && sale.weightKg) {
+            if (sale.year === 2025) channel2025.set(sale.channel, (channel2025.get(sale.channel) || 0) + sale.weightKg);
+            if (sale.year === 2026) channel2026.set(sale.channel, (channel2026.get(sale.channel) || 0) + sale.weightKg);
+        }
+    });
+    
+    const allChannels = new Set([...channel2025.keys(), ...channel2026.keys()]);
+    allChannels.forEach(channel => {
+        const val2025 = channel2025.get(channel) || 0;
+        const val2026 = channel2026.get(channel) || 0;
+        const change = val2025 > 0 ? ((val2026 - val2025) / val2025 * 100).toFixed(1) : 0;
+        channelData.push({ name: channel, kg2026: val2026, change: parseFloat(change) });
+    });
+    channelData.sort((a,b) => b.kg2026 - a.kg2026);
+    const topChannelsList = channelData.slice(0,5);
+    
+    // Данные по дистрибьюторам (ДТ)
+    let dtData = [];
+    const dtMap = new Map();
+    salesData.forEach(sale => {
+        if (sale.dt && sale.weightKg) {
+            dtMap.set(sale.dt, (dtMap.get(sale.dt) || 0) + sale.weightKg);
+        }
+    });
+    dtData = Array.from(dtMap.entries()).map(([name, kg]) => ({ name, kg, percent: (kg/totalSales2026*100) }));
+    dtData.sort((a,b) => b.kg - a.kg);
+    const top3DT = dtData.slice(0,3);
+    
+    // Данные по типам корма
+    let typeData = [];
+    const typeMap = new Map();
+    salesData.forEach(sale => {
+        if (sale.type && sale.weightKg) {
+            typeMap.set(sale.type, (typeMap.get(sale.type) || 0) + sale.weightKg);
+        }
+    });
+    typeData = Array.from(typeMap.entries()).map(([name, kg]) => ({ name, kg, percent: (kg/totalSales2026*100) }));
+    typeData.sort((a,b) => b.kg - a.kg);
+    
+    // Данные по менеджерам (ДМ, РМ, СВ, ТП)
+    const dmMap = new Map();
+    const rmMap = new Map();
+    const svMap = new Map();
+    const tpMap = new Map();
+    
+    salesData.forEach(sale => {
+        if (sale.dm && sale.weightKg) dmMap.set(sale.dm, (dmMap.get(sale.dm) || 0) + sale.weightKg);
+        if (sale.rm && sale.weightKg) rmMap.set(sale.rm, (rmMap.get(sale.rm) || 0) + sale.weightKg);
+        if (sale.sv && sale.weightKg) svMap.set(sale.sv, (svMap.get(sale.sv) || 0) + sale.weightKg);
+        if (sale.tp && sale.weightKg) tpMap.set(sale.tp, (tpMap.get(sale.tp) || 0) + sale.weightKg);
+    });
+    
+    const getTopManager = (map, label) => {
+        const sorted = Array.from(map.entries()).sort((a,b) => b[1] - a[1]).slice(0, 2);
+        return sorted.map(([name, kg]) => `${label}: ${name} (${(kg/totalSales2026*100).toFixed(1)}%)`).join(', ');
+    };
+    
+    const managerInfo = [getTopManager(dmMap, 'ДМ'), getTopManager(rmMap, 'РМ'), getTopManager(svMap, 'СВ'), getTopManager(tpMap, 'ТП')].filter(s => s).join('\n     ');
+    
+    // Формируем блок с данными
+    const dataBlock = `
+┌─────────────────────────────────────────────────────────────┐
+│  ПРОДАЖИ:                                                  │
+│     2025: ${Math.round(totalSales2025).toLocaleString()} кг      │
+│     2026: ${Math.round(totalSales2026).toLocaleString()} кг      │
+│     Динамика: ${salesChange}% (${salesTrend})                    │
+├─────────────────────────────────────────────────────────────┤
+│  ПОКАЗАТЕЛИ 2026 (изменение к 2025):                       │
+│     АКБ: ${kpiData.akb2026.toLocaleString()} ТТ (${kpiData.akbChangePct > 0 ? '+' : ''}${kpiData.akbChangePct.toFixed(1)}%)         │
+│     Продажи на ТТ: ${kpiData.avgSalesPerTT2026.toFixed(1)} кг (${kpiData.avgSalesChangePct > 0 ? '+' : ''}${kpiData.avgSalesChangePct.toFixed(1)}%) │
+│     SKU на ТТ: ${kpiData.avgSku2026.toFixed(1)} (${kpiData.avgSkuChangePct > 0 ? '+' : ''}${kpiData.avgSkuChangePct.toFixed(1)}%)          │
+│     Доля промо: ${kpiData.promoShare2026.toFixed(1)}% (${kpiData.promoShareChange > 0 ? '+' : ''}${kpiData.promoShareChange.toFixed(1)} п.п.)    │
+├─────────────────────────────────────────────────────────────┤
+│  БРЕНДЫ (доля 2026 / динамика):                            │
+${top5Brands.map(b => `│     • ${b.name}: ${(b.kg2026/totalSales2026*100).toFixed(1)}% (${b.change > 0 ? '↑' : '↓'} ${Math.abs(b.change)}%)`).join('\n')}
+├─────────────────────────────────────────────────────────────┤
+│  КАНАЛЫ (доля 2026 / динамика):                            │
+${topChannelsList.map(ch => `│     • ${ch.name}: ${(ch.kg2026/totalSales2026*100).toFixed(1)}% (${ch.change > 0 ? '↑' : '↓'} ${Math.abs(ch.change)}%)`).join('\n')}
+├─────────────────────────────────────────────────────────────┤
+│  ДИСТРИБЬЮТОРЫ (ТОП-3 по доле 2026):                      │
+${top3DT.map(dt => `│     • ${dt.name}: ${dt.percent.toFixed(1)}%`).join('\n')}
+├─────────────────────────────────────────────────────────────┤
+│  ТИПЫ КОРМА (доля 2026):                                   │
+${typeData.map(t => `│     • ${t.name}: ${t.percent.toFixed(1)}%`).join('\n')}
+├─────────────────────────────────────────────────────────────┤
+│  МЕНЕДЖЕРЫ (ТОП-2 по доле):                               │
+│     ${managerInfo}                                          │
+└─────────────────────────────────────────────────────────────┘`;
 
-📊 ОБЩАЯ ДИНАМИКА:
-- Продажи 2025 год: ${Math.round(totalSales2025).toLocaleString()} кг
-- Продажи 2026 год: ${Math.round(totalSales2026).toLocaleString()} кг
-- Динамика: ${salesChange}%
+    // ВОЗВРАЩАЕМ ПРОМПТ (текст, который отправится в GigaChat)
+    return `Ты — супер-профи аналитик по продажам кормов для животных. Твоя задача — глубоко вникнуть в данные, найти скрытые закономерности и дать реально полезные, применимые на практике бизнес-рекомендации.
 
-📈 КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ (2026 год):
-- АКБ (активные ТТ): ${kpiData.akb2026.toLocaleString()} ТТ
-- Средние продажи на ТТ: ${kpiData.avgSalesPerTT2026.toFixed(1)} кг
-- Среднее количество SKU на ТТ: ${kpiData.avgSku2026.toFixed(1)} SKU
-- Доля промо-продаж: ${kpiData.promoShare2026.toFixed(1)}%
+Вот данные для анализа:
 
-🏆 ТОП-5 БРЕНДОВ ПО ВЫРУЧКЕ:
-${topBrands.map((b, i) => `${i+1}. ${b.brand}: ${(b.revenue/totalSales2026*100).toFixed(1)}%`).join('\n')}
+${dataBlock}
 
-📍 ТОП-6 ГОРОДОВ:
-${topCities.map((c, i) => `${i+1}. ${c.city}: ${(c.revenue/totalSales2026*100).toFixed(1)}%`).join('\n')}
+Проанализируй как эксперт. Определи:
 
-📦 ОСНОВНЫЕ КАНАЛЫ ПРОДАЖ (кг):
-${topChannels.map((ch, i) => `${i+1}. ${ch.channel}: ${(ch.kg/totalSales2026*100).toFixed(1)}%`).join('\n')}
+1. ДИНАМИКА ПРОДАЖ: Растут (↑) или падают (↓)? На сколько %? За счёт какого ключевого показателя (АКБ / продажи на ТТ / SKU на ТТ / промо)?
 
-На основе этих данных:
-1. Выдели главные тренды (что растёт, что падает)
-2. Напиши 3-5 конкретных рекомендаций для увеличения продаж
-3. Укажи, на каких брендах, городах и каналах стоит сфокусироваться
-4. Если видны риски (падение АКБ, снижение SKU и т.д.) — укажи их
+2. ДРАЙВЕРЫ: Какие бренды, каналы, дистрибьюторы, типы корма дали основной вклад в рост или падение? Назови конкретно, кто вырос (↑), кто упал (↓), на сколько примерно.
 
-Ответ должен быть кратким, конкретным и полезным для бизнеса.`;
+3. ОСТАТКИ: Есть признаки дефицита (↓ остатки, ↑ продажи → недополученная выручка)? Или затоваривание (↑ остатки, ↓ продажи)? Кратко. Если данных нет — напиши "нет данных".
+
+4. МЕНЕДЖЕРЫ (ДМ, РМ, СВ, ТП): Есть аномалии, резкие скачки, пики? Кто провалился (↓), кто вырос (↑)? Назови 1-2 имени.
+
+5. ВЫВОД И РЕКОМЕНДАЦИИ: "Молодец, у вас рост! Ключевые драйверы: ..." или "Внимание, проблемные зоны: ..." + 2-3 конкретные рекомендации, что делать.
+
+Оформи ответ структурированно, с отступами и маркерами. Используй стрелки ↑ для роста и ↓ для падения. Без эмодзи. Без воды. Только польза.
+
+ОТВЕТ:`;
 }
 
 // Функция для обновления блока с ИИ-анализом (через прокси на Replit)
@@ -1951,7 +2059,7 @@ async function updateAIAnalysis(salesData, kpiData, topBrands, topCities, topCha
     // Показываем, что ИИ думает
     insightDiv.innerHTML = `
         <div class="insight-title">
-            <span>🤖 ИИ-АНАЛИЗ (GigaChat)</span>
+            <span>Аналитическое резюме</span>
         </div>
         <div class="insight-text" style="display: flex; align-items: center; gap: 12px;">
             <div class="spinner" style="width: 20px; height: 20px; border: 2px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
@@ -1981,7 +2089,7 @@ async function updateAIAnalysis(salesData, kpiData, topBrands, topCities, topCha
         if (analysis) {
             insightDiv.innerHTML = `
                 <div class="insight-title">
-                    <span>🤖 ИИ-АНАЛИЗ (GigaChat)</span>
+                    <span>Аналитическое резюме</span>
                 </div>
                 <div class="insight-text">
                     ${analysis.replace(/\n/g, '<br>')}
@@ -1995,7 +2103,7 @@ async function updateAIAnalysis(salesData, kpiData, topBrands, topCities, topCha
         console.error('Ошибка ИИ-анализа:', error);
         insightDiv.innerHTML = `
             <div class="insight-title">
-                <span>🤖 ИИ-АНАЛИЗ (GigaChat)</span>
+                <span>Аналитическое резюме</span>
             </div>
             <div class="insight-text">
                 ⚠️ Не удалось получить анализ от GigaChat.<br>
